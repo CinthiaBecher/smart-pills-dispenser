@@ -6,7 +6,9 @@ Dispenser Inteligente de Medicamentos — TCC 2, Ciência da Computação, UNISI
 
 Ecossistema IoT com IA para gerenciamento de medicamentos, indo além da automação mecânica tradicional. O sistema interpreta prescrições médicas por foto, oferece um assistente conversacional com contexto do paciente e monitora ativamente doses não confirmadas — alertando cuidadores quando necessário.
 
-## Diferenciais                                                                                                                                                   - **Interpretação de prescrição por imagem** — foto da receita médica é processada pelo Gemini Vision e convertida em dados estruturados automaticamente          - **Assistente IA com contexto do paciente** — chat que conhece os medicamentos, horários e histórico do usuário
+## Diferenciais
+
+- **Interpretação de prescrição por imagem** — foto da receita médica é processada pelo Gemini Vision e convertida em dados estruturados automaticamente          - **Assistente IA com contexto do paciente** — chat que conhece os medicamentos, horários e histórico do usuário
 - **Monitoramento ativo de doses** — detecta doses não confirmadas e envia alerta por email ao cuidador/familiar                                                  - **Integração IoT** — ESP32 simulado no Wokwi se comunica via MQTT com o backend
 
 ## Arquitetura                                                                                                                                                    
