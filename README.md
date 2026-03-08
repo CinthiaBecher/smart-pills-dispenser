@@ -8,8 +8,10 @@ Ecossistema IoT com IA para gerenciamento de medicamentos, indo além da automa�
 
 ## Diferenciais
 
-- **Interpretação de prescrição por imagem** — foto da receita médica é processada pelo Gemini Vision e convertida em dados estruturados automaticamente          - **Assistente IA com contexto do paciente** — chat que conhece os medicamentos, horários e histórico do usuário
-- **Monitoramento ativo de doses** — detecta doses não confirmadas e envia alerta por email ao cuidador/familiar                                                  - **Integração IoT** — ESP32 simulado no Wokwi se comunica via MQTT com o backend
+- **Interpretação de prescrição por imagem** — foto da receita médica é processada pelo Gemini Vision e convertida em dados estruturados automaticamente
+- **Assistente IA com contexto do paciente** — chat que conhece os medicamentos, horários e histórico do usuário
+- **Monitoramento ativo de doses** — detecta doses não confirmadas e envia alerta por email ao cuidador/familiar
+- **Integração IoT** — ESP32 simulado no Wokwi se comunica via MQTT com o backend
 
 ## Arquitetura                                                                                                                                                    
 
