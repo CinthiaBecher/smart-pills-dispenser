@@ -50,6 +50,17 @@ class MedicationResponse(BaseModel):
         from_attributes = True
 
 
+# Mensagem enviada pelo frontend para o chat
+class ChatMessage(BaseModel):
+    user_id: uuid.UUID
+    message: str
+
+
+# Resposta do chat retornada pela API
+class ChatResponse(BaseModel):
+    reply: str
+
+
 # Dados necessários para CRIAR um agendamento
 class ScheduleCreate(BaseModel):
     medication_id: uuid.UUID

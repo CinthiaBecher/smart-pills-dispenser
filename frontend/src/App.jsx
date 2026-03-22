@@ -91,6 +91,20 @@ const ENDPOINTS = [
       },
     ],
   },
+  {
+    group: 'Chat (IA)',
+    actions: [
+      {
+        label: '💬 Enviar mensagem',
+        method: 'POST',
+        path: '/api/chat/',
+        fields: [
+          { name: 'user_id', label: 'ID do usuário', type: 'text' },
+          { name: 'message', label: 'Mensagem', type: 'text' },
+        ],
+      },
+    ],
+  },
 ]
 
 function Modal({ action, onClose }) {

@@ -39,3 +39,13 @@ class Schedule(Base):
     days_of_week = Column(ARRAY(Integer), default=[0,1,2,3,4,5,6]) # 0=dom, 1=seg, ..., 6=sab
     active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
+
+
+class ChatHistory(Base):
+    __tablename__ = "chat_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    role = Column(String(20), nullable=False)  # 'user' ou 'assistant'
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
