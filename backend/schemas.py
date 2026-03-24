@@ -50,6 +50,21 @@ class MedicationResponse(BaseModel):
         from_attributes = True
 
 
+# Um medicamento confirmado pelo usuário após a interpretação da receita
+class ConfirmedMedication(BaseModel):
+    name: str
+    dosage: str
+    route: str = "oral"
+    instructions: Optional[str] = None
+    frequency: Optional[str] = None  # ex: "2x ao dia", "a cada 8 horas", "à noite"
+
+
+# Request do endpoint /prescriptions/confirm
+class PrescriptionConfirmRequest(BaseModel):
+    user_id: uuid.UUID
+    medications: List[ConfirmedMedication]
+
+
 # Mensagem enviada pelo frontend para o chat
 class ChatMessage(BaseModel):
     user_id: uuid.UUID

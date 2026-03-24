@@ -89,6 +89,15 @@ const ENDPOINTS = [
         path: '/api/prescriptions/interpret',
         fields: [{ name: 'file', label: 'Imagem da receita', type: 'file' }],
       },
+      {
+        label: '✅ Confirmar prescrição',
+        method: 'POST',
+        path: '/api/prescriptions/confirm',
+        fields: [
+          { name: 'user_id', label: 'ID do usuário', type: 'text' },
+          { name: 'medications', label: 'Medicamentos (JSON array)', type: 'json' },
+        ],
+      },
     ],
   },
   {
@@ -136,9 +145,15 @@ function Modal({ action, onClose }) {
           fd.append('file', form[fileField.name])
           options.body = fd
         } else {
-          // JSON normal
+          // Campos do tipo 'json' precisam ser parseados antes de enviar
+          const parsed = { ...form }
+          action.fields.forEach((f) => {
+            if (f.type === 'json' && typeof parsed[f.name] === 'string') {
+              try { parsed[f.name] = JSON.parse(parsed[f.name]) } catch {}
+            }
+          })
           options.headers = { 'Content-Type': 'application/json' }
-          options.body = JSON.stringify(form)
+          options.body = JSON.stringify(parsed)
         }
       }
 
@@ -169,6 +184,13 @@ function Modal({ action, onClose }) {
                   <option key={o} value={o}>{o}</option>
                 ))}
               </select>
+            ) : field.type === 'json' ? (
+              <textarea
+                rows={5}
+                placeholder='[{"name": "Losartana", "dosage": "50mg", "route": "oral", "frequency": "1x ao dia"}]'
+                style={{ display: 'block', width: '100%', marginTop: 4, padding: '8px 10px', border: '1px solid #ddd', borderRadius: 6, fontSize: '0.82rem', fontFamily: 'monospace', resize: 'vertical' }}
+                onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
+              />
             ) : field.type === 'file' ? (
               <input
                 type="file"

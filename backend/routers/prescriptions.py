@@ -2,11 +2,16 @@ import os
 import json
 import re
 import io
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from datetime import time
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from sqlalchemy.orm import Session
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 from PIL import Image
+from backend.database import get_db
+from backend.models import Medication, Schedule, User
+from backend.schemas import PrescriptionConfirmRequest
 
 load_dotenv()
 
@@ -101,3 +106,90 @@ async def interpret_prescription(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="Gemini retornou resposta em formato inválido")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao processar imagem: {str(e)}")
+
+
+def frequency_to_times(frequency: str) -> list[time]:
+    """
+    Converte uma string de frequência em uma lista de horários.
+    Usa horários convencionais adequados para um dispensador automático.
+    Se não reconhecer o padrão, usa 08:00 como padrão seguro.
+    """
+    if not frequency:
+        return [time(8, 0)]
+
+    f = frequency.lower().strip()
+
+    # Padrões "Nx ao dia"
+    if "4x" in f or "4 x" in f or "a cada 6" in f:
+        return [time(8, 0), time(12, 0), time(18, 0), time(22, 0)]
+    if "3x" in f or "3 x" in f or "a cada 8" in f:
+        return [time(8, 0), time(14, 0), time(20, 0)]
+    if "2x" in f or "2 x" in f or "a cada 12" in f:
+        return [time(8, 0), time(20, 0)]
+
+    # Padrões por período do dia
+    if "manhã" in f and "noite" in f:
+        return [time(8, 0), time(20, 0)]
+    if "manhã" in f and "tarde" in f:
+        return [time(8, 0), time(14, 0)]
+    if "noite" in f or "dormir" in f or "deitar" in f:
+        return [time(22, 0)]
+    if "manhã" in f or "jejum" in f:
+        return [time(8, 0)]
+    if "tarde" in f or "almoço" in f:
+        return [time(12, 0)]
+
+    # Padrão "1x ao dia" ou qualquer menção a "dia"
+    if "1x" in f or "1 x" in f or "uma vez" in f or "diário" in f or "diária" in f:
+        return [time(8, 0)]
+
+    # Padrão "a cada 24 horas"
+    if "24" in f:
+        return [time(8, 0)]
+
+    # Padrão não reconhecido — padrão seguro
+    return [time(8, 0)]
+
+
+@router.post("/confirm")
+def confirm_prescription(body: PrescriptionConfirmRequest, db: Session = Depends(get_db)):
+    # Verifica se o usuário existe
+    user = db.query(User).filter(User.id == body.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    created_medications = []
+
+    for med_data in body.medications:
+        # Cria o medicamento vinculado ao usuário
+        medication = Medication(
+            user_id=body.user_id,
+            name=med_data.name,
+            dosage=med_data.dosage,
+            route=med_data.route,
+            instructions=med_data.instructions,
+        )
+        db.add(medication)
+        db.flush()  # flush envia ao banco mas não confirma — necessário para obter o medication.id antes do commit
+
+        # Converte a frequência em horários e cria os agendamentos
+        times = frequency_to_times(med_data.frequency)
+        schedules_created = []
+        for t in times:
+            schedule = Schedule(medication_id=medication.id, time=t)
+            db.add(schedule)
+            schedules_created.append(str(t))
+
+        created_medications.append({
+            "medication": med_data.name,
+            "dosage": med_data.dosage,
+            "schedules": schedules_created,
+            "frequency_original": med_data.frequency,
+        })
+
+    db.commit()
+
+    return {
+        "message": f"{len(created_medications)} medicamento(s) cadastrado(s) com sucesso",
+        "created": created_medications,
+    }
