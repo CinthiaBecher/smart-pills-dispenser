@@ -2,17 +2,30 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import TestPanel from './pages/TestPanel'
 import Login from './pages/Login'
 
+// Placeholder temporário para rotas ainda não implementadas
+function EmBreve({ nome }) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="bg-white rounded-2xl p-8 shadow-md text-center">
+        <p className="text-gray-400 text-sm">Tela "{nome}" em construção...</p>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Redireciona a raiz para login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* Telas do app */}
         <Route path="/login" element={<Login />} />
+        <Route path="/dashboard" element={<EmBreve nome="Dashboard" />} />
+        <Route path="/medicamentos" element={<EmBreve nome="Meus Medicamentos" />} />
+        <Route path="/escanear" element={<EmBreve nome="Escanear Receita" />} />
+        <Route path="/chat" element={<EmBreve nome="Chat" />} />
 
-        {/* Painel de testes antigo — mantido para referência */}
+        {/* Painel de testes original */}
         <Route path="/test" element={<TestPanel />} />
       </Routes>
     </BrowserRouter>
