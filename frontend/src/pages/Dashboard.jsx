@@ -60,8 +60,8 @@ function CircularProgress({ percent }) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [medicamentos, setMedicamentos] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [_medicamentos, setMedicamentos] = useState([])
+  const [_loading, setLoading] = useState(true)
 
   // Usuário salvo no login — por ora usa ID fixo para demo
   const nomeUsuario = localStorage.getItem('userName') || 'Cinthia'
