@@ -146,7 +146,7 @@ export default function Medicamentos() {
   return (
     <div className="min-h-screen bg-background pb-24">
 
-      {/* Header */}
+      {/* Header — sempre visível */}
       <header className="bg-background px-4 pt-4 pb-2 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/dashboard')} className="text-primary">
@@ -156,7 +156,6 @@ export default function Medicamentos() {
           </button>
           <h1 className="text-lg font-bold text-primary">Meus Medicamentos</h1>
         </div>
-
         <button
           onClick={() => alert('Adicionar medicamento — em breve!')}
           className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-sm"
@@ -167,14 +166,21 @@ export default function Medicamentos() {
         </button>
       </header>
 
+      {/* Conteúdo — loading, erro ou lista */}
       <main className="px-4 pt-2 flex flex-col gap-3">
         {loading && (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="flex flex-col items-center justify-center gap-4" style={{ minHeight: 'calc(100vh - 120px)' }}>
+            <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                <path d="M4.5 12.5L11.5 5.5C13.5 3.5 16.5 3.5 18.5 5.5C20.5 7.5 20.5 10.5 18.5 12.5L11.5 19.5C9.5 21.5 6.5 21.5 4.5 19.5C2.5 17.5 2.5 14.5 4.5 12.5Z" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" />
+                <line x1="8.5" y1="15.5" x2="15.5" y2="8.5" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
+            <p className="text-gray-400 text-base">Carregando...</p>
           </div>
         )}
 
-        {erro && (
+        {!loading && erro && (
           <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-danger text-sm text-center">
             {erro}
           </div>
@@ -192,7 +198,7 @@ export default function Medicamentos() {
           </div>
         )}
 
-        {!loading && medicamentos.map((med) => (
+        {!loading && !erro && medicamentos.map((med) => (
           <CardMedicamento
             key={med.id}
             med={med}
@@ -201,6 +207,7 @@ export default function Medicamentos() {
         ))}
       </main>
 
+      {/* Nav — sempre visível */}
       <BottomNav />
     </div>
   )
