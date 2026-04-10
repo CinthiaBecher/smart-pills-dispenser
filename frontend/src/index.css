@@ -1,22 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos legados do painel de testes — não remover */
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 body {
-  font-family: sans-serif;
-  background: #f0f2f5;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #F0EFEA;
   color: #333;
 }
 
-h1 {
-  text-align: center;
-  padding: 24px;
-  font-size: 1.4rem;
-  color: #1a1a2e;
-}
-
+/* Painel de testes */
 .groups {
   display: flex;
   flex-wrap: wrap;
