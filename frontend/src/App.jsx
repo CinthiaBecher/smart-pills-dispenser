@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import TestPanel from './pages/TestPanel'
 import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
 
 // Placeholder temporário para rotas ainda não implementadas
 function EmBreve({ nome }) {
@@ -20,10 +21,11 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<EmBreve nome="Dashboard" />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/medicamentos" element={<EmBreve nome="Meus Medicamentos" />} />
         <Route path="/escanear" element={<EmBreve nome="Escanear Receita" />} />
         <Route path="/chat" element={<EmBreve nome="Chat" />} />
+        <Route path="/perfil" element={<EmBreve nome="Perfil" />} />
 
         {/* Painel de testes original */}
         <Route path="/test" element={<TestPanel />} />

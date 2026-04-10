@@ -21,8 +21,12 @@ export default function Login() {
 
     setLoading(true)
     try {
-      // Por enquanto navega direto para o dashboard
       // TODO: integrar com endpoint de autenticação quando estiver pronto
+      // Por ora salva o nome do email e navega pro dashboard
+      const nome = email.split('@')[0]
+      const nomeFmt = nome.charAt(0).toUpperCase() + nome.slice(1)
+      localStorage.setItem('userName', nomeFmt)
+      localStorage.setItem('userId', '1') // ID fixo para demo
       navigate('/dashboard')
     } catch (err) {
       setErro('Erro ao entrar. Tente novamente.')
