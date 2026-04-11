@@ -43,6 +43,15 @@ class Schedule(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+class PatientCaregiver(Base):
+    __tablename__ = "patient_caregivers"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    caregiver_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+
 class DispensationEvent(Base):
     __tablename__ = "dispensation_events"
 

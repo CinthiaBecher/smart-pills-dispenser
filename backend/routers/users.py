@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import User
-from backend.schemas import UserCreate, UserResponse
+from backend.schemas import UserCreate, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/api/users", tags=["Usuários"])
 
@@ -44,4 +44,21 @@ def get_user(user_id: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    return user
+
+
+# Atualizar dados do usuário (nome, timeout de notificação)
+@router.patch("/{user_id}", response_model=UserResponse)
+def update_user(user_id: str, data: UserUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    if data.name is not None:
+        user.name = data.name
+    if data.notification_timeout_minutes is not None:
+        user.notification_timeout_minutes = data.notification_timeout_minutes
+
+    db.commit()
+    db.refresh(user)
     return user

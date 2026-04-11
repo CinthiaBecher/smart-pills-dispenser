@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import users, medications, schedules, prescriptions, chat, dispensation
+from backend.routers import users, medications, schedules, prescriptions, chat, dispensation, caregivers
 
 app = FastAPI(title="Smart Pills Dispenser API")
 
@@ -17,6 +17,7 @@ app.include_router(schedules.router)
 app.include_router(prescriptions.router)
 app.include_router(chat.router)
 app.include_router(dispensation.router)
+app.include_router(caregivers.router)
 
 
 @app.get("/")

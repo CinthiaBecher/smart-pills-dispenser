@@ -12,6 +12,12 @@ class UserCreate(BaseModel):
     notification_timeout_minutes: int = 30
 
 
+# Dados para ATUALIZAR um usuário (todos opcionais)
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    notification_timeout_minutes: Optional[int] = None
+
+
 # Dados retornados pela API ao consultar um usuário
 class UserResponse(BaseModel):
     id: uuid.UUID
@@ -46,6 +52,7 @@ class MedicationResponse(BaseModel):
     restrictions: Optional[str]
     compartment: Optional[int]
     active: bool
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -91,6 +98,21 @@ class ScheduleResponse(BaseModel):
     time: str
     days_of_week: List[int]
     active: bool
+
+    class Config:
+        from_attributes = True
+
+
+# ── Cuidadores ───────────────────────────────────────────────────
+
+class AddCaregiverRequest(BaseModel):
+    caregiver_email: str  # paciente adiciona cuidador pelo email
+
+class CaregiverResponse(BaseModel):
+    id: uuid.UUID        # id do vínculo
+    caregiver_id: uuid.UUID
+    name: str
+    email: str
 
     class Config:
         from_attributes = True
