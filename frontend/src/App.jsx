@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Medicamentos from './pages/Medicamentos'
 import Escanear from './pages/Escanear'
+import Chat from './pages/Chat'
 
 // Placeholder temporário para rotas ainda não implementadas
 function EmBreve({ nome }) {
@@ -26,7 +27,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/medicamentos" element={<Medicamentos />} />
         <Route path="/escanear" element={<Escanear />} />
-        <Route path="/chat" element={<EmBreve nome="Chat" />} />
+        <Route path="/chat" element={<Chat />} />
         <Route path="/perfil" element={<EmBreve nome="Perfil" />} />
 
         {/* Painel de testes original */}
