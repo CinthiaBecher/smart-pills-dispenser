@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
+from datetime import datetime
 import uuid
 
 
@@ -90,6 +91,29 @@ class ScheduleResponse(BaseModel):
     time: str
     days_of_week: List[int]
     active: bool
+
+    class Config:
+        from_attributes = True
+
+
+# ── Dispensation Events ──────────────────────────────────────────
+
+# O que o frontend envia para confirmar que tomou a dose
+class ConfirmDoseRequest(BaseModel):
+    event_id: uuid.UUID
+
+
+# O que o dashboard recebe para montar a agenda do dia
+# Inclui dados do medicamento junto para não precisar de chamadas extras
+class TodayEventResponse(BaseModel):
+    event_id: uuid.UUID
+    schedule_id: uuid.UUID
+    scheduled_time: datetime
+    confirmed_at: Optional[datetime]
+    status: str                   # pending | dispensed | confirmed | missed
+    medication_name: str          # ex: "Losartana"
+    medication_dosage: str        # ex: "50mg"
+    medication_instructions: Optional[str]
 
     class Config:
         from_attributes = True
