@@ -21,15 +21,24 @@ export default function Login() {
 
     setLoading(true)
     try {
-      // TODO: integrar com endpoint de autenticação quando estiver pronto
-      // Por ora salva o nome do email e navega pro dashboard
-      const nome = email.split('@')[0]
-      const nomeFmt = nome.charAt(0).toUpperCase() + nome.slice(1)
-      localStorage.setItem('userName', nomeFmt)
-      localStorage.setItem('userId', '1') // ID fixo para demo
+      // Busca o usuário pelo email no banco
+      const res = await fetch(`http://localhost:8000/api/users/by-email/${encodeURIComponent(email)}`)
+
+      if (!res.ok) {
+        setErro('E-mail não encontrado. Verifique ou crie uma conta.')
+        return
+      }
+
+      const usuario = await res.json()
+
+      // Salva os dados do usuário no localStorage
+      localStorage.setItem('userId', usuario.id)
+      localStorage.setItem('userName', usuario.name)
+      localStorage.setItem('userRole', usuario.role)
+
       navigate('/dashboard')
     } catch (err) {
-      setErro('Erro ao entrar. Tente novamente.')
+      setErro('Não foi possível conectar ao servidor.')
     } finally {
       setLoading(false)
     }

@@ -28,6 +28,16 @@ def list_users(db: Session = Depends(get_db)):
     return db.query(User).all()
 
 
+# Buscar usuário por email — usado pelo Login para autenticar
+# IMPORTANTE: essa rota vem ANTES de /{user_id} para não ser confundida com um ID
+@router.get("/by-email/{email}", response_model=UserResponse)
+def get_user_by_email(email: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    return user
+
+
 # Buscar usuário por ID
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(user_id: str, db: Session = Depends(get_db)):
