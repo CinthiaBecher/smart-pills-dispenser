@@ -2,9 +2,27 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import User, PatientCaregiver
-from backend.schemas import AddCaregiverRequest, CaregiverResponse
+from backend.schemas import AddCaregiverRequest, CaregiverResponse, UserResponse
 
 router = APIRouter(prefix="/api/caregivers", tags=["Cuidadores"])
+
+
+# IMPORTANTE: rota literal ANTES de /{patient_id} para não conflitar
+@router.get("/my-patient/{caregiver_id}", response_model=UserResponse)
+def get_my_patient(caregiver_id: str, db: Session = Depends(get_db)):
+    """Retorna o paciente vinculado a um cuidador."""
+    vinculo = db.query(PatientCaregiver).filter(
+        PatientCaregiver.caregiver_id == caregiver_id
+    ).first()
+
+    if not vinculo:
+        raise HTTPException(status_code=404, detail="Nenhum paciente vinculado a este cuidador")
+
+    paciente = db.query(User).filter(User.id == vinculo.patient_id).first()
+    if not paciente:
+        raise HTTPException(status_code=404, detail="Paciente não encontrado")
+
+    return paciente
 
 
 @router.get("/{patient_id}", response_model=list[CaregiverResponse])

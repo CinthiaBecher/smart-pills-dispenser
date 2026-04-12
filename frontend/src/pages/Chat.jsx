@@ -87,8 +87,8 @@ export default function Chat() {
         body: JSON.stringify({ user_id: userId, message: msg }),
       })
       const data = await res.json()
-      // A API retorna { response: "..." }
-      const resposta = data.response || data.message || 'Não entendi. Pode reformular?'
+      // A API retorna { reply: "..." }
+      const resposta = data.reply || 'Não entendi. Pode reformular?'
       setMensagens((prev) => [...prev, { de: 'bot', texto: resposta }])
     } catch {
       setMensagens((prev) => [...prev, {

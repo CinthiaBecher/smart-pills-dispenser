@@ -3,20 +3,18 @@ import PrivateRoute from './components/PrivateRoute'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
+import CaregiverDashboard from './pages/CaregiverDashboard'
 import Medicamentos from './pages/Medicamentos'
 import Escanear from './pages/Escanear'
 import Chat from './pages/Chat'
 import Perfil from './pages/Perfil'
 import TestPanel from './pages/TestPanel'
 
-function EmBreve({ nome }) {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="bg-white rounded-2xl p-8 shadow-md text-center">
-        <p className="text-gray-400 text-sm">Tela "{nome}" em construção...</p>
-      </div>
-    </div>
-  )
+// Redireciona para o dashboard certo de acordo com o papel do usuário
+function RoleDashboard() {
+  const role = localStorage.getItem('userRole')
+  if (role === 'caregiver') return <CaregiverDashboard />
+  return <Dashboard />
 }
 
 export default function App() {
@@ -31,7 +29,7 @@ export default function App() {
         <Route path="/cadastro" element={<Register />} />
 
         {/* Rotas privadas — exigem login */}
-        <Route path="/dashboard"    element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+        <Route path="/dashboard"    element={<PrivateRoute><RoleDashboard /></PrivateRoute>} />
         <Route path="/medicamentos" element={<PrivateRoute><Medicamentos /></PrivateRoute>} />
         <Route path="/escanear"     element={<PrivateRoute><Escanear /></PrivateRoute>} />
         <Route path="/chat"         element={<PrivateRoute><Chat /></PrivateRoute>} />

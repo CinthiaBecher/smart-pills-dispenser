@@ -90,6 +90,64 @@ def get_today_events(user_id: str, db: Session = Depends(get_db)):
     return eventos_resposta
 
 
+@router.get("/weekly/{user_id}")
+def get_weekly_adherence(user_id: str, db: Session = Depends(get_db)):
+    """
+    Retorna dados de adesão dos últimos 7 dias para um usuário.
+    Usado pelo dashboard do cuidador para o gráfico semanal.
+    """
+    hoje = date.today()
+    DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+    resultado = []
+
+    # Busca medicamentos do usuário uma vez só
+    medicamentos = db.query(Medication).filter(
+        Medication.user_id == user_id,
+        Medication.active == True
+    ).all()
+    med_ids = [m.id for m in medicamentos]
+
+    # Busca todos os schedules ativos uma vez só
+    if med_ids:
+        schedules = db.query(Schedule).filter(
+            Schedule.medication_id.in_(med_ids),
+            Schedule.active == True
+        ).all()
+        schedule_ids = [s.id for s in schedules]
+    else:
+        schedule_ids = []
+
+    for i in range(6, -1, -1):  # 6 dias atrás até hoje
+        dia = hoje - timedelta(days=i)
+        inicio_dia = datetime.combine(dia, datetime.min.time())
+        fim_dia = datetime.combine(dia + timedelta(days=1), datetime.min.time())
+
+        if schedule_ids:
+            eventos_dia = db.query(DispensationEvent).filter(
+                DispensationEvent.schedule_id.in_(schedule_ids),
+                DispensationEvent.scheduled_time >= inicio_dia,
+                DispensationEvent.scheduled_time < fim_dia
+            ).all()
+        else:
+            eventos_dia = []
+
+        total = len(eventos_dia)
+        confirmados = sum(1 for e in eventos_dia if e.status == 'confirmed')
+        percent = round((confirmados / total) * 100) if total > 0 else 0
+
+        # weekday(): 0=seg...6=dom → converte para 0=dom...6=sab
+        day_index = (dia.weekday() + 1) % 7
+        resultado.append({
+            "day": DIAS[day_index],
+            "date": str(dia),
+            "total": total,
+            "confirmed": confirmados,
+            "percent": percent
+        })
+
+    return resultado
+
+
 @router.post("/confirm")
 def confirm_dose(req: ConfirmDoseRequest, db: Session = Depends(get_db)):
     """
