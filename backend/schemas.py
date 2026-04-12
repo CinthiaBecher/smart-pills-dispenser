@@ -18,6 +18,14 @@ class UserUpdate(BaseModel):
     notification_timeout_minutes: Optional[int] = None
 
 
+# Dados para REGISTRAR um novo usuário (tela de cadastro)
+class UserRegister(BaseModel):
+    name: str
+    email: EmailStr
+    role: str = "patient"                        # "patient" ou "caregiver"
+    patient_email: Optional[str] = None          # só preenchido se role="caregiver"
+
+
 # Dados retornados pela API ao consultar um usuário
 class UserResponse(BaseModel):
     id: uuid.UUID

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import logo from '../assets/logo.png'
 
 export default function Login() {
@@ -9,6 +9,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const cadastroSucesso = searchParams.get('cadastro') === 'sucesso'
 
   async function handleEntrar(e) {
     e.preventDefault()
@@ -55,6 +57,14 @@ export default function Login() {
 
       {/* Card */}
       <div className="bg-white rounded-3xl shadow-lg px-8 py-10 w-full max-w-xs mx-4 z-10">
+
+        {/* Banner de sucesso após cadastro */}
+        {cadastroSucesso && (
+          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-4 text-center">
+            <p className="text-primary text-sm font-semibold">Conta criada com sucesso!</p>
+            <p className="text-gray-400 text-xs mt-0.5">Faça login para continuar.</p>
+          </div>
+        )}
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-6">
@@ -132,7 +142,7 @@ export default function Login() {
           <button
             type="button"
             className="text-primary text-sm text-center hover:underline mt-1"
-            onClick={() => alert('Criar conta — em breve!')}
+            onClick={() => navigate('/cadastro')}
           >
             Criar conta
           </button>

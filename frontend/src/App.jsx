@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import PrivateRoute from './components/PrivateRoute'
 import Login from './pages/Login'
+import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Medicamentos from './pages/Medicamentos'
 import Escanear from './pages/Escanear'
@@ -27,6 +28,7 @@ export default function App() {
 
         {/* Rotas públicas */}
         <Route path="/login" element={<Login />} />
+        <Route path="/cadastro" element={<Register />} />
 
         {/* Rotas privadas — exigem login */}
         <Route path="/dashboard"    element={<PrivateRoute><Dashboard /></PrivateRoute>} />

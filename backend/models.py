@@ -49,6 +49,8 @@ class PatientCaregiver(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     caregiver_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    relationship = Column(String(100), nullable=True)   # ex: "familiar", "enfermeiro"
+    active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
 
 
