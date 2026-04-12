@@ -1,6 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 import uuid
 
 
@@ -44,9 +44,11 @@ class MedicationCreate(BaseModel):
     name: str
     dosage: str
     route: str = "oral"
-    instructions: Optional[str] = None   # Optional = campo não obrigatório
+    instructions: Optional[str] = None
     restrictions: Optional[str] = None
     compartment: Optional[int] = None
+    start_date: Optional[date] = Field(default_factory=date.today)
+    duration_days: Optional[int] = None  # null = uso contínuo
 
 
 # Dados retornados pela API ao consultar um medicamento
@@ -60,6 +62,8 @@ class MedicationResponse(BaseModel):
     restrictions: Optional[str]
     compartment: Optional[int]
     active: bool
+    start_date: Optional[date] = None
+    duration_days: Optional[int] = None
     created_at: Optional[datetime] = None
 
     class Config:
@@ -72,7 +76,8 @@ class ConfirmedMedication(BaseModel):
     dosage: str
     route: str = "oral"
     instructions: Optional[str] = None
-    frequency: Optional[str] = None  # ex: "2x ao dia", "a cada 8 horas", "à noite"
+    frequency: Optional[str] = None      # ex: "2x ao dia", "a cada 8 horas"
+    duration_days: Optional[int] = None  # ex: 7 (tomar por 7 dias), null = uso contínuo
 
 
 # Request do endpoint /prescriptions/confirm
@@ -136,7 +141,7 @@ class ConfirmDoseRequest(BaseModel):
 # O que o dashboard recebe para montar a agenda do dia
 # Inclui dados do medicamento junto para não precisar de chamadas extras
 class TodayEventResponse(BaseModel):
-    event_id: uuid.UUID
+    event_id: Optional[uuid.UUID] = None  # None para doses futuras (sem evento criado ainda)
     schedule_id: uuid.UUID
     scheduled_time: datetime
     confirmed_at: Optional[datetime]

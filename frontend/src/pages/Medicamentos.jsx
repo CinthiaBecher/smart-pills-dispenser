@@ -20,9 +20,21 @@ function PilulIcon() {
   )
 }
 
+// Calcula quantos dias restam de um tratamento com prazo
+function diasRestantes(med) {
+  if (!med.duration_days || !med.start_date) return null
+  const fim  = new Date(med.start_date)
+  fim.setDate(fim.getDate() + med.duration_days)
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  fim.setHours(0, 0, 0, 0)
+  return Math.ceil((fim - hoje) / (1000 * 60 * 60 * 24))
+}
+
 function CardMedicamento({ med, horarios }) {
   const [menuAberto, setMenuAberto] = useState(false)
-  const ativo = med.active !== false // considera ativo por padrão
+  const ativo   = med.active !== false
+  const restam  = diasRestantes(med)
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
@@ -30,10 +42,16 @@ function CardMedicamento({ med, horarios }) {
         <PilulIcon />
 
         <div className="flex-1 min-w-0">
-          {/* Nome + badge + menu */}
+          {/* Nome + badges + menu */}
           <div className="flex items-center justify-between gap-2 mb-1">
             <h3 className="font-bold text-gray-800 text-sm leading-tight">{med.name}</h3>
             <div className="flex items-center gap-2 shrink-0">
+              {/* Badge de dias restantes — só para tratamentos temporários */}
+              {restam !== null && restam > 0 && (
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
+                  {restam}d restantes
+                </span>
+              )}
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                 ativo
                   ? 'bg-green-100 text-primary'

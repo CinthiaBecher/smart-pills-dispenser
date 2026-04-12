@@ -47,10 +47,15 @@ Retorne SOMENTE um JSON válido, sem texto adicional, no seguinte formato:
       "dosage": "dosagem (ex: 50mg)",
       "route": "via de administração (ex: oral)",
       "instructions": "instruções de uso (ex: tomar em jejum)",
-      "frequency": "frequência (ex: 1x ao dia, a cada 8 horas)"
+      "frequency": "frequência (ex: 1x ao dia, a cada 8 horas)",
+      "duration_days": número inteiro de dias de tratamento ou null se uso contínuo/crônico
     }}
   ]
 }}
+
+Para duration_days: se a receita mencionar "por X dias", "durante X dias", "por X semanas" (converta para dias),
+"uso contínuo", "uso crônico" ou não mencionar prazo → use null.
+Exemplos: "tomar por 7 dias" → 7, "por 2 semanas" → 14, "uso contínuo" → null.
 
 Se não conseguir identificar algum campo, use null.
 Se não houver medicamentos visíveis, retorne {{"medications": []}}.
@@ -168,6 +173,7 @@ def confirm_prescription(body: PrescriptionConfirmRequest, db: Session = Depends
             dosage=med_data.dosage,
             route=med_data.route,
             instructions=med_data.instructions,
+            duration_days=med_data.duration_days,  # None = uso contínuo
         )
         db.add(medication)
         db.flush()  # flush envia ao banco mas não confirma — necessário para obter o medication.id antes do commit

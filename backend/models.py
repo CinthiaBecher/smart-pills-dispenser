@@ -1,5 +1,6 @@
 import uuid
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, Time, ForeignKey, func
+from datetime import date as date_type
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Date, Text, Time, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from backend.database import Base
 # Enum do Python para garantir que status só aceite valores válidos
@@ -29,6 +30,8 @@ class Medication(Base):
     restrictions = Column(Text)                      # ex: "não combinar com anti-inflamatórios"
     compartment = Column(Integer)                    # compartimento no dispenser (1-6)
     active = Column(Boolean, default=True)
+    start_date = Column(Date, default=date_type.today)  # quando começou o tratamento
+    duration_days = Column(Integer, nullable=True)       # null = uso contínuo
     created_at = Column(DateTime, server_default=func.now())
 
 

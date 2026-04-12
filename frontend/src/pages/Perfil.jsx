@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
+import CalendarView from '../components/CalendarView'
 
 const BASE = 'http://localhost:8000'
 const OPCOES_TIMEOUT = [15, 30, 45, 60]
@@ -231,6 +232,20 @@ export default function Perfil() {
                 </div>
               )}
             </div>
+
+            {/* Calendário de adesão — só para pacientes */}
+            {usuario.role === 'patient' && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="4" width="18" height="18" rx="2" stroke="#006B5E" strokeWidth="1.8" />
+                    <path d="M16 2v4M8 2v4M3 10h18" stroke="#006B5E" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                  Calendário de adesão
+                </h3>
+                <CalendarView userId={userId} />
+              </div>
+            )}
 
             {/* Card de notificações */}
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">

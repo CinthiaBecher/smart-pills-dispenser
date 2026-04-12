@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta
+from calendar import monthrange
+from collections import defaultdict
 
 from backend.database import get_db
 from backend.models import DispensationEvent, Schedule, Medication
@@ -88,6 +90,223 @@ def get_today_events(user_id: str, db: Session = Depends(get_db)):
     # Ordena por horário programado
     eventos_resposta.sort(key=lambda e: e.scheduled_time)
     return eventos_resposta
+
+
+@router.get("/day/{user_id}", response_model=list[TodayEventResponse])
+def get_day_events(user_id: str, date_str: str = None, db: Session = Depends(get_db)):
+    """
+    Retorna doses de um dia específico para um usuário.
+    - Dias passados/hoje: consulta dispensation_events (histórico real)
+    - Dias futuros:       consulta schedules ativos para mostrar o que está agendado
+    Parâmetro: date_str=2026-04-12 (padrão: hoje)
+    """
+    if date_str:
+        try:
+            dia = date.fromisoformat(date_str)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Formato inválido. Use YYYY-MM-DD")
+    else:
+        dia = date.today()
+
+    hoje = date.today()
+
+    # ── Dia futuro: retorna agendamentos, sem eventos ainda ─────────
+    if dia > hoje:
+        medicamentos = db.query(Medication).filter(
+            Medication.user_id == user_id,
+            Medication.active == True,
+        ).all()
+        if not medicamentos:
+            return []
+
+        med_map   = {m.id: m for m in medicamentos}
+        # Converte weekday Python (0=seg…6=dom) para padrão do banco (0=dom…6=sab)
+        dia_banco = (dia.weekday() + 1) % 7
+
+        schedules = db.query(Schedule).filter(
+            Schedule.medication_id.in_(list(med_map.keys())),
+            Schedule.active == True,
+        ).all()
+
+        resultado = []
+        for s in schedules:
+            if dia_banco not in (s.days_of_week or []):
+                continue
+
+            med = med_map[s.medication_id]
+
+            # Respeita o período do tratamento:
+            # - Se start_date definido e dia é anterior ao início → pula
+            # - Se duration_days definido e dia é igual ou posterior ao fim → pula
+            # Exemplo: start=12/04, duration=10 → válido de 12/04 até 21/04 (exclusive 22/04)
+            if med.start_date and dia < med.start_date:
+                continue
+            if med.duration_days and med.start_date:
+                fim = med.start_date + timedelta(days=med.duration_days)
+                if dia >= fim:
+                    continue
+
+            resultado.append(TodayEventResponse(
+                event_id=None,  # ainda não existe o evento
+                schedule_id=s.id,
+                scheduled_time=datetime.combine(dia, s.time),
+                confirmed_at=None,
+                status="pending",
+                medication_name=med.name,
+                medication_dosage=med.dosage,
+                medication_instructions=med.instructions,
+            ))
+
+        resultado.sort(key=lambda e: e.scheduled_time)
+        return resultado
+
+    # ── Dia passado ou hoje: consulta eventos reais ─────────────────
+    inicio = datetime.combine(dia, datetime.min.time())
+    fim    = datetime.combine(dia + timedelta(days=1), datetime.min.time())
+
+    medicamentos = db.query(Medication).filter(Medication.user_id == user_id).all()
+    if not medicamentos:
+        return []
+
+    med_map = {m.id: m for m in medicamentos}
+    sch_to_med = {}
+    for med in medicamentos:
+        for s in db.query(Schedule).filter(Schedule.medication_id == med.id).all():
+            sch_to_med[s.id] = med
+
+    sch_ids = list(sch_to_med.keys())
+    if not sch_ids:
+        return []
+
+    eventos = db.query(DispensationEvent).filter(
+        DispensationEvent.schedule_id.in_(sch_ids),
+        DispensationEvent.scheduled_time >= inicio,
+        DispensationEvent.scheduled_time < fim,
+    ).order_by(DispensationEvent.scheduled_time).all()
+
+    resultado = []
+    for e in eventos:
+        med = sch_to_med.get(e.schedule_id)
+        if not med:
+            continue
+        resultado.append(TodayEventResponse(
+            event_id=e.id,
+            schedule_id=e.schedule_id,
+            scheduled_time=e.scheduled_time,
+            confirmed_at=e.confirmed_at,
+            status=e.status,
+            medication_name=med.name,
+            medication_dosage=med.dosage,
+            medication_instructions=med.instructions,
+        ))
+
+    return resultado
+
+
+@router.get("/calendar/{user_id}")
+def get_calendar(user_id: str, month: str = None, db: Session = Depends(get_db)):
+    """
+    Retorna dados de adesão para cada dia de um mês.
+    Parâmetro: month=2026-04 (padrão: mês atual)
+
+    Status por dia:
+    - future  → dia ainda não chegou
+    - none    → sem eventos registrados nesse dia
+    - full    → todas as doses confirmadas (verde)
+    - partial → algumas confirmadas (vermelho — perdeu ao menos uma)
+    - missed  → nenhuma confirmada (vermelho)
+    """
+    hoje = date.today()
+
+    if not month:
+        month = hoje.strftime("%Y-%m")
+
+    try:
+        ano, mes = map(int, month.split("-"))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Formato inválido. Use YYYY-MM")
+
+    _, ultimo_dia = monthrange(ano, mes)
+    inicio_mes = datetime(ano, mes, 1, 0, 0, 0)
+    fim_mes    = datetime(ano, mes, ultimo_dia, 23, 59, 59)
+
+    # Todos os medicamentos do usuário (ativos e inativos — eventos antigos importam)
+    med_ids = [
+        m.id for m in db.query(Medication.id).filter(Medication.user_id == user_id).all()
+    ]
+
+    if not med_ids:
+        return [
+            {"date": str(date(ano, mes, d)), "total": 0, "confirmed": 0,
+             "status": "future" if date(ano, mes, d) > hoje else "none"}
+            for d in range(1, ultimo_dia + 1)
+        ]
+
+    schedule_ids = [
+        s.id for s in db.query(Schedule.id).filter(Schedule.medication_id.in_(med_ids)).all()
+    ]
+
+    if not schedule_ids:
+        return [
+            {"date": str(date(ano, mes, d)), "total": 0, "confirmed": 0,
+             "status": "future" if date(ano, mes, d) > hoje else "none"}
+            for d in range(1, ultimo_dia + 1)
+        ]
+
+    # Uma única query para todos os eventos do mês
+    eventos = db.query(DispensationEvent).filter(
+        DispensationEvent.schedule_id.in_(schedule_ids),
+        DispensationEvent.scheduled_time >= inicio_mes,
+        DispensationEvent.scheduled_time <= fim_mes,
+    ).all()
+
+    # Agrupa por dia em Python (sem N queries)
+    por_dia = defaultdict(list)
+    for e in eventos:
+        por_dia[e.scheduled_time.date().isoformat()].append(e)
+
+    agora = datetime.now()
+    resultado = []
+
+    for dia_num in range(1, ultimo_dia + 1):
+        dia     = date(ano, mes, dia_num)
+        dia_str = dia.isoformat()
+
+        if dia > hoje:
+            status = "future"
+            total = confirmed = 0
+
+        else:
+            evts      = por_dia.get(dia_str, [])
+            total     = len(evts)
+            confirmed = sum(1 for e in evts if e.status == "confirmed")
+
+            if total == 0:
+                status = "none"
+            elif confirmed == total:
+                status = "full"
+            elif dia == hoje:
+                # Dia atual: verifica se as doses pendentes ainda não chegaram no horário
+                # Só é "faltou" se o horário da dose já passou e ela não foi confirmada
+                nao_conf_passadas = sum(
+                    1 for e in evts
+                    if e.status != "confirmed" and e.scheduled_time <= agora
+                )
+                if nao_conf_passadas == 0:
+                    # Todas as pendentes são no futuro de hoje — ainda em dia
+                    status = "in_progress"
+                elif confirmed > 0:
+                    status = "partial"
+                else:
+                    status = "missed"
+            elif confirmed > 0:
+                status = "partial"
+            else:
+                status = "missed"
+
+        resultado.append({"date": dia_str, "total": total, "confirmed": confirmed, "status": status})
+
+    return resultado
 
 
 @router.get("/weekly/{user_id}")

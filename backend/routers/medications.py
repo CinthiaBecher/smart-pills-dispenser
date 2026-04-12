@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import date, timedelta
 from backend.database import get_db
 from backend.models import Medication, User
 from backend.schemas import MedicationCreate, MedicationResponse
@@ -23,12 +24,28 @@ def create_medication(medication: MedicationCreate, db: Session = Depends(get_db
 
 
 # Listar medicamentos de um paciente
+# Também verifica e expira medicamentos temporários cujo prazo já passou
 @router.get("/user/{user_id}", response_model=list[MedicationResponse])
 def list_medications(user_id: str, db: Session = Depends(get_db)):
-    return db.query(Medication).filter(
+    meds = db.query(Medication).filter(
         Medication.user_id == user_id,
         Medication.active == True
     ).all()
+
+    hoje = date.today()
+    expirou_algum = False
+    for med in meds:
+        if med.duration_days and med.start_date:
+            fim = med.start_date + timedelta(days=med.duration_days)
+            if fim < hoje:
+                med.active = False
+                expirou_algum = True
+
+    if expirou_algum:
+        db.commit()
+
+    # Retorna apenas os ainda ativos após a checagem
+    return [m for m in meds if m.active]
 
 
 # Buscar medicamento por ID
