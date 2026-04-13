@@ -1,5 +1,8 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ScanValidation from '../components/scan/ScanValidation'
+import ScanReview from '../components/scan/ScanReview'
+import ScanConfirm from '../components/scan/ScanConfirm'
 
 const BASE = 'http://localhost:8000'
 
@@ -42,7 +45,7 @@ function Stepper({ etapa }) {
   )
 }
 
-// ── Etapa 1: Capturar ──────────────────────────────────────
+// ── Etapa 1: Capturar (mantida exatamente como estava) ─────
 function EtapaCapturar({ onImagem }) {
   const inputCameraRef = useRef()
   const inputGaleriaRef = useRef()
@@ -113,156 +116,29 @@ function EtapaCapturar({ onImagem }) {
   )
 }
 
-// ── Etapa 2: Revisar ───────────────────────────────────────
-function EtapaRevisar({ medicamentos, onChange, onContinuar }) {
-  function atualizar(index, campo, valor) {
-    const copia = [...medicamentos]
-    copia[index] = { ...copia[index], [campo]: valor }
-    onChange(copia)
-  }
-
-  function remover(index) {
-    onChange(medicamentos.filter((_, i) => i !== index))
-  }
-
-  function adicionar() {
-    onChange([...medicamentos, { name: '', dosage: '', frequency: '', route: 'oral', instructions: '' }])
-  }
-
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-gray-400 text-sm text-center">
-        Revise os medicamentos extraídos da receita
-      </p>
-
-      {medicamentos.map((med, i) => (
-        <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-gray-800">{med.name || 'Medicamento'}</h3>
-            <div className="flex gap-2">
-              <button onClick={() => remover(i)} className="text-danger hover:opacity-70">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 text-sm text-gray-600">
-            <div className="flex gap-1">
-              <span className="text-gray-400 w-24 shrink-0">Dosagem:</span>
-              <span>{med.dosage}</span>
-            </div>
-            <div className="flex gap-1">
-              <span className="text-gray-400 w-24 shrink-0">Frequência:</span>
-              <span>{med.frequency}</span>
-            </div>
-            <div className="flex gap-1">
-              <span className="text-gray-400 w-24 shrink-0">Via:</span>
-              <span>{med.route}</span>
-            </div>
-            <div className="flex gap-1">
-              <span className="text-gray-400 w-24 shrink-0">Instruções:</span>
-              <span>{med.instructions}</span>
-            </div>
-          </div>
-        </div>
-      ))}
-
-      <button
-        onClick={adicionar}
-        className="flex items-center justify-center gap-1 text-primary text-sm font-medium py-2"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <path d="M12 5v14M5 12h14" stroke="#006B5E" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-        Adicionar medicamento
-      </button>
-
-      <button
-        onClick={onContinuar}
-        className="w-full bg-accent hover:bg-accent-dark text-white font-semibold rounded-full py-3 mt-2 transition-colors"
-      >
-        Continuar
-      </button>
-    </div>
-  )
-}
-
-// ── Etapa 3: Confirmar ─────────────────────────────────────
-function EtapaConfirmar({ medicamentos, onVoltar, onSalvar, salvando }) {
-  // Gera horários de exemplo baseado na frequência
-  function gerarHorarios(med) {
-    const freq = (med.frequency || '').toLowerCase()
-    if (freq.includes('2x') || freq.includes('2 x') || freq.includes('duas')) {
-      return ['08:00', '20:00']
-    }
-    if (freq.includes('3x') || freq.includes('3 x') || freq.includes('três')) {
-      return ['08:00', '14:00', '20:00']
-    }
-    return ['08:00']
-  }
-
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-gray-400 text-sm text-center">
-        Confirme os medicamentos e agendamentos
-      </p>
-
-      {medicamentos.map((med, i) => {
-        const horarios = gerarHorarios(med)
-        return (
-          <div key={i} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-            <h3 className="font-bold text-gray-800 mb-1">
-              {med.name} {med.dosage}
-            </h3>
-            <p className="text-gray-400 text-xs mb-3">
-              {med.frequency} • {med.route}
-            </p>
-
-            <div className="bg-gray-50 rounded-xl p-3">
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-2">
-                Horários Gerados
-              </p>
-              {horarios.map((h) => (
-                <p key={h} className="text-sm text-gray-600">
-                  {h} — {med.name} {med.dosage}
-                </p>
-              ))}
-            </div>
-          </div>
-        )
-      })}
-
-      <button onClick={onVoltar} className="text-primary text-sm text-center font-medium py-1">
-        Voltar para Editar
-      </button>
-
-      <button
-        onClick={onSalvar}
-        disabled={salvando}
-        className="w-full bg-accent hover:bg-accent-dark text-white font-semibold rounded-full py-3 mt-1 transition-colors disabled:opacity-60"
-      >
-        {salvando ? 'Salvando...' : 'Salvar e Criar Agendamentos'}
-      </button>
-    </div>
-  )
-}
-
 // ── Componente principal ───────────────────────────────────
 export default function Escanear() {
   const navigate = useNavigate()
+
+  // Passo atual do stepper (1 = Capturar, 2 = Revisar, 3 = Confirmar)
   const [etapa, setEtapa] = useState(1)
+  // Sub-etapa dentro do passo 2: 'validacao' → 'revisao'
+  const [subEtapa, setSubEtapa] = useState('validacao')
+
   const [arquivo, setArquivo] = useState(null)
+  // dadosReceita guarda tudo que a IA extraiu: patient_name, prescription_date, doctor_name, doctor_crm, medications
+  const [dadosReceita, setDadosReceita] = useState(null)
   const [medicamentos, setMedicamentos] = useState([])
+
   const [interpretando, setInterpretando] = useState(false)
   const [erroInterpretacao, setErroInterpretacao] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [sucesso, setSucesso] = useState(false)
 
   const userId = localStorage.getItem('userId') || '1'
+  const userName = localStorage.getItem('userName') || ''
 
+  // Chamada ao backend quando o usuário seleciona uma imagem
   async function handleImagem(file) {
     setArquivo(file)
     setErroInterpretacao('')
@@ -274,9 +150,11 @@ export default function Escanear() {
       const res = await fetch(`${BASE}/api/prescriptions/interpret`, { method: 'POST', body: fd })
       if (!res.ok) throw new Error('Erro na interpretação')
       const data = await res.json()
-      // A API retorna { medications: [...] }
-      setMedicamentos(data.medications || data)
+
+      setDadosReceita(data)
+      setMedicamentos(data.medications || [])
       setEtapa(2)
+      setSubEtapa('validacao')
     } catch (err) {
       setErroInterpretacao('Não foi possível interpretar a receita. Tente outra imagem.')
     } finally {
@@ -284,20 +162,48 @@ export default function Escanear() {
     }
   }
 
+  // Volta ao passo 1 sem precisar navegar — só reseta o estado
+  function handleTentarNovamente() {
+    setArquivo(null)
+    setDadosReceita(null)
+    setMedicamentos([])
+    setErroInterpretacao('')
+    setEtapa(1)
+    setSubEtapa('validacao')
+  }
+
+  // Salva os medicamentos no backend
+  // Remove campos internos de UI (prefixo _) antes de enviar
   async function handleSalvar() {
     setSalvando(true)
     try {
+      // Remove campos internos de UI antes de enviar (prefixo _ = só frontend)
+      const medsParaEnviar = medicamentos.map(({ _replaceDuplicate, _times, ...med }) => med)
       const res = await fetch(`${BASE}/api/prescriptions/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, medications: medicamentos }),
+        body: JSON.stringify({ user_id: userId, medications: medsParaEnviar }),
       })
       if (!res.ok) throw new Error('Erro ao salvar')
-      navigate('/medicamentos')
+      setSucesso(true)
     } catch (err) {
       alert('Erro ao salvar. Tente novamente.')
     } finally {
       setSalvando(false)
+    }
+  }
+
+  // Lógica do botão voltar no header
+  function handleVoltar() {
+    if (etapa === 3) {
+      setEtapa(2)
+      setSubEtapa('revisao')
+    } else if (etapa === 2 && subEtapa === 'revisao') {
+      setSubEtapa('validacao')
+    } else if (etapa === 2 && subEtapa === 'validacao') {
+      setEtapa(1)
+    } else {
+      navigate('/dashboard')
     }
   }
 
@@ -306,7 +212,7 @@ export default function Escanear() {
 
       {/* Header */}
       <header className="px-4 pt-4 pb-2 flex items-center">
-        <button onClick={() => etapa > 1 ? setEtapa(etapa - 1) : navigate('/dashboard')} className="text-primary mr-3">
+        <button onClick={handleVoltar} className="text-primary mr-3">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             <path d="M19 12H5M12 5l-7 7 7 7" stroke="#006B5E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -314,11 +220,12 @@ export default function Escanear() {
         <h1 className="text-lg font-bold text-gray-800 flex-1 text-center pr-6">Escanear Receita</h1>
       </header>
 
-      <Stepper etapa={etapa} />
+      {/* Stepper — não exibe durante a tela de sucesso */}
+      {!sucesso && <Stepper etapa={etapa} />}
 
       <main className="px-4 flex flex-col gap-3">
 
-        {/* Loading da interpretação */}
+        {/* Loading enquanto a IA processa a imagem */}
         {interpretando && (
           <div className="flex flex-col items-center justify-center gap-3 py-20">
             <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center">
@@ -338,26 +245,43 @@ export default function Escanear() {
           </div>
         )}
 
+        {/* ── PASSO 1: Capturar (sem alterações) ─────────────── */}
         {!interpretando && etapa === 1 && (
           <EtapaCapturar onImagem={handleImagem} />
         )}
 
-        {!interpretando && etapa === 2 && (
-          <EtapaRevisar
-            medicamentos={medicamentos}
-            onChange={setMedicamentos}
-            onContinuar={() => setEtapa(3)}
+        {/* ── PASSO 2A: Validação da receita ──────────────────── */}
+        {!interpretando && etapa === 2 && subEtapa === 'validacao' && (
+          <ScanValidation
+            dadosReceita={dadosReceita}
+            userName={userName}
+            onContinuar={() => setSubEtapa('revisao')}
+            onTentarNovamente={handleTentarNovamente}
           />
         )}
 
-        {!interpretando && etapa === 3 && (
-          <EtapaConfirmar
+        {/* ── PASSO 2B: Revisão dos medicamentos ──────────────── */}
+        {!interpretando && etapa === 2 && subEtapa === 'revisao' && (
+          <ScanReview
             medicamentos={medicamentos}
-            onVoltar={() => setEtapa(2)}
-            onSalvar={handleSalvar}
-            salvando={salvando}
+            onChange={setMedicamentos}
+            onProximo={() => setEtapa(3)}
+            userId={userId}
           />
         )}
+
+        {/* ── PASSO 3: Confirmar tratamento ───────────────────── */}
+        {!interpretando && etapa === 3 && (
+          <ScanConfirm
+            medicamentos={medicamentos}
+            onVoltar={() => { setEtapa(2); setSubEtapa('revisao') }}
+            onSalvar={handleSalvar}
+            salvando={salvando}
+            sucesso={sucesso}
+            navigate={navigate}
+          />
+        )}
+
       </main>
     </div>
   )

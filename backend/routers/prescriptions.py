@@ -20,45 +20,34 @@ router = APIRouter(prefix="/api/prescriptions", tags=["Prescrições"])
 # Inicializa o cliente Gemini com a chave da API
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Campos que serão removidos da imagem antes de enviar ao Gemini
-# Instrução de anonimização incluída no prompt — não enviamos dados pessoais
-ANONYMIZATION_INSTRUCTION = """
-Ignore completamente qualquer informação pessoal presente na imagem, como:
-- Nome do paciente
-- Nome do médico
-- CRM do médico
-- Endereço
-- CPF ou RG
-- Data de nascimento
-
-Foque APENAS nas informações dos medicamentos.
-"""
-
-PRESCRIPTION_PROMPT = f"""
-{ANONYMIZATION_INSTRUCTION}
-
-Analise esta receita médica e extraia os medicamentos prescritos.
+PRESCRIPTION_PROMPT = """
+Analise esta receita médica e extraia todas as informações presentes.
 Retorne SOMENTE um JSON válido, sem texto adicional, no seguinte formato:
 
-{{
+{
+  "patient_name": "nome completo do paciente conforme consta na receita, ou null se não encontrado",
+  "prescription_date": "data da receita no formato YYYY-MM-DD, ou null se não encontrada",
+  "doctor_name": "nome completo do médico prescritor, ou null se não encontrado",
+  "doctor_crm": "número do CRM com estado (ex: CRM/SP 12345), ou null se não encontrado",
   "medications": [
-    {{
+    {
       "name": "nome do medicamento",
       "dosage": "dosagem (ex: 50mg)",
       "route": "via de administração (ex: oral)",
       "instructions": "instruções de uso (ex: tomar em jejum)",
       "frequency": "frequência (ex: 1x ao dia, a cada 8 horas)",
-      "duration_days": número inteiro de dias de tratamento ou null se uso contínuo/crônico
-    }}
+      "duration_days": número inteiro de dias de tratamento ou null se uso contínuo/crônico,
+      "description": "indicação terapêutica resumida em português (ex: Anti-hipertensivo, Controle glicêmico, Antibiótico)"
+    }
   ]
-}}
+}
 
 Para duration_days: se a receita mencionar "por X dias", "durante X dias", "por X semanas" (converta para dias),
 "uso contínuo", "uso crônico" ou não mencionar prazo → use null.
 Exemplos: "tomar por 7 dias" → 7, "por 2 semanas" → 14, "uso contínuo" → null.
 
 Se não conseguir identificar algum campo, use null.
-Se não houver medicamentos visíveis, retorne {{"medications": []}}.
+Se não houver medicamentos visíveis, retorne {"medications": []}.
 """
 
 

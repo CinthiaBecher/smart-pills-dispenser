@@ -78,6 +78,7 @@ class ConfirmedMedication(BaseModel):
     instructions: Optional[str] = None
     frequency: Optional[str] = None      # ex: "2x ao dia", "a cada 8 horas"
     duration_days: Optional[int] = None  # ex: 7 (tomar por 7 dias), null = uso contínuo
+    description: Optional[str] = None   # indicação terapêutica extraída pela IA (ex: Anti-hipertensivo)
 
 
 # Request do endpoint /prescriptions/confirm

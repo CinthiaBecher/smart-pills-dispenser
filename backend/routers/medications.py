@@ -48,6 +48,21 @@ def list_medications(user_id: str, db: Session = Depends(get_db)):
     return [m for m in meds if m.active]
 
 
+# Verificar se o usuário já possui medicamento ativo com o mesmo nome
+# ATENÇÃO: esta rota deve ficar ANTES de /{medication_id} para evitar conflito de matching
+@router.get("/check-duplicate/{user_id}")
+def check_duplicate(user_id: str, name: str, db: Session = Depends(get_db)):
+    existing = db.query(Medication).filter(
+        Medication.user_id == user_id,
+        Medication.name.ilike(f"%{name}%"),
+        Medication.active == True
+    ).first()
+    return {
+        "exists": existing is not None,
+        "medication_id": str(existing.id) if existing else None,
+    }
+
+
 # Buscar medicamento por ID
 @router.get("/{medication_id}", response_model=MedicationResponse)
 def get_medication(medication_id: str, db: Session = Depends(get_db)):
