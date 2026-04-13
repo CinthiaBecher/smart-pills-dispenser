@@ -172,17 +172,35 @@ export default function Escanear() {
     setSubEtapa('validacao')
   }
 
-  // Salva os medicamentos no backend
+  // Converte a imagem capturada para base64 (data URL) para guardar no histórico
+  function imagemParaBase64(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (e) => resolve(e.target.result)
+      reader.readAsDataURL(file)
+    })
+  }
+
+  // Salva medicamentos + registro da receita no backend
   // Remove campos internos de UI (prefixo _) antes de enviar
   async function handleSalvar() {
     setSalvando(true)
     try {
-      // Remove campos internos de UI antes de enviar (prefixo _ = só frontend)
       const medsParaEnviar = medicamentos.map(({ _replaceDuplicate, _times, ...med }) => med)
+      const imageBase64 = arquivo ? await imagemParaBase64(arquivo) : null
+
       const res = await fetch(`${BASE}/api/prescriptions/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, medications: medsParaEnviar }),
+        body: JSON.stringify({
+          user_id: userId,
+          medications: medsParaEnviar,
+          patient_name: dadosReceita?.patient_name ?? null,
+          prescription_date: dadosReceita?.prescription_date ?? null,
+          doctor_name: dadosReceita?.doctor_name ?? null,
+          doctor_crm: dadosReceita?.doctor_crm ?? null,
+          image_base64: imageBase64,
+        }),
       })
       if (!res.ok) throw new Error('Erro ao salvar')
       setSucesso(true)

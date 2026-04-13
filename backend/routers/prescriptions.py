@@ -2,7 +2,8 @@ import os
 import json
 import re
 import io
-from datetime import time
+from datetime import time, date
+from typing import List
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.orm import Session
 from google import genai
@@ -10,8 +11,8 @@ from google.genai import types
 from dotenv import load_dotenv
 from PIL import Image
 from backend.database import get_db
-from backend.models import Medication, Schedule, User
-from backend.schemas import PrescriptionConfirmRequest
+from backend.models import Medication, Schedule, User, Prescription
+from backend.schemas import PrescriptionConfirmRequest, PrescriptionListItem, PrescriptionDetail
 
 load_dotenv()
 
@@ -155,19 +156,17 @@ def confirm_prescription(body: PrescriptionConfirmRequest, db: Session = Depends
     created_medications = []
 
     for med_data in body.medications:
-        # Cria o medicamento vinculado ao usuário
         medication = Medication(
             user_id=body.user_id,
             name=med_data.name,
             dosage=med_data.dosage,
             route=med_data.route,
             instructions=med_data.instructions,
-            duration_days=med_data.duration_days,  # None = uso contínuo
+            duration_days=med_data.duration_days,
         )
         db.add(medication)
-        db.flush()  # flush envia ao banco mas não confirma — necessário para obter o medication.id antes do commit
+        db.flush()
 
-        # Converte a frequência em horários e cria os agendamentos
         times = frequency_to_times(med_data.frequency)
         schedules_created = []
         for t in times:
@@ -178,9 +177,29 @@ def confirm_prescription(body: PrescriptionConfirmRequest, db: Session = Depends
         created_medications.append({
             "medication": med_data.name,
             "dosage": med_data.dosage,
+            "description": med_data.description,
             "schedules": schedules_created,
             "frequency_original": med_data.frequency,
         })
+
+    # Salva o registro da receita escaneada para o histórico
+    prescription_date = None
+    if body.prescription_date:
+        try:
+            prescription_date = date.fromisoformat(body.prescription_date)
+        except ValueError:
+            pass  # data inválida — salva sem ela
+
+    prescription_record = Prescription(
+        user_id=body.user_id,
+        patient_name=body.patient_name,
+        prescription_date=prescription_date,
+        doctor_name=body.doctor_name,
+        doctor_crm=body.doctor_crm,
+        image_base64=body.image_base64,
+        medications_json=json.dumps(created_medications, ensure_ascii=False),
+    )
+    db.add(prescription_record)
 
     db.commit()
 
@@ -188,3 +207,24 @@ def confirm_prescription(body: PrescriptionConfirmRequest, db: Session = Depends
         "message": f"{len(created_medications)} medicamento(s) cadastrado(s) com sucesso",
         "created": created_medications,
     }
+
+
+@router.get("/user/{user_id}", response_model=List[PrescriptionListItem])
+def list_prescriptions(user_id: str, db: Session = Depends(get_db)):
+    """Lista todas as receitas escaneadas de um paciente, da mais recente para a mais antiga."""
+    prescriptions = (
+        db.query(Prescription)
+        .filter(Prescription.user_id == user_id)
+        .order_by(Prescription.scanned_at.desc())
+        .all()
+    )
+    return prescriptions
+
+
+@router.get("/{prescription_id}", response_model=PrescriptionDetail)
+def get_prescription(prescription_id: str, db: Session = Depends(get_db)):
+    """Retorna o detalhe de uma receita escaneada, incluindo a imagem."""
+    prescription = db.query(Prescription).filter(Prescription.id == prescription_id).first()
+    if not prescription:
+        raise HTTPException(status_code=404, detail="Receita não encontrada")
+    return prescription

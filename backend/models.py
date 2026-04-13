@@ -89,6 +89,20 @@ class DispensationEvent(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+class Prescription(Base):
+    __tablename__ = "prescriptions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    patient_name = Column(String(255), nullable=True)
+    prescription_date = Column(Date, nullable=True)
+    doctor_name = Column(String(255), nullable=True)
+    doctor_crm = Column(String(100), nullable=True)
+    image_base64 = Column(Text, nullable=True)      # imagem da receita em base64 (data URL)
+    medications_json = Column(Text, nullable=True)  # snapshot JSON dos medicamentos no momento do scan
+    scanned_at = Column(DateTime, server_default=func.now())
+
+
 class ChatHistory(Base):
     __tablename__ = "chat_history"
 

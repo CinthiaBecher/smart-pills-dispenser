@@ -82,9 +82,34 @@ class ConfirmedMedication(BaseModel):
 
 
 # Request do endpoint /prescriptions/confirm
+# Agora inclui os dados da receita para salvar o histórico
 class PrescriptionConfirmRequest(BaseModel):
     user_id: uuid.UUID
     medications: List[ConfirmedMedication]
+    patient_name: Optional[str] = None
+    prescription_date: Optional[str] = None   # YYYY-MM-DD
+    doctor_name: Optional[str] = None
+    doctor_crm: Optional[str] = None
+    image_base64: Optional[str] = None        # data URL da imagem (data:image/jpeg;base64,...)
+
+
+# Item na listagem de receitas escaneadas (sem imagem para não pesar)
+class PrescriptionListItem(BaseModel):
+    id: uuid.UUID
+    patient_name: Optional[str]
+    prescription_date: Optional[date]
+    doctor_name: Optional[str]
+    doctor_crm: Optional[str]
+    medications_json: Optional[str]
+    scanned_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Detalhe de uma receita (inclui a imagem)
+class PrescriptionDetail(PrescriptionListItem):
+    image_base64: Optional[str]
 
 
 # Mensagem enviada pelo frontend para o chat

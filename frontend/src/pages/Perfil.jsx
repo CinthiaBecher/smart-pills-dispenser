@@ -194,44 +194,29 @@ export default function Perfil() {
               </div>
             </div>
 
-            {/* Card de receitas escaneadas */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="#006B5E" strokeWidth="1.8" strokeLinejoin="round" />
-                  <circle cx="12" cy="13" r="4" stroke="#006B5E" strokeWidth="1.8" />
-                </svg>
-                Receitas escaneadas
-              </h3>
-
-              {medicamentos.length === 0 ? (
-                <p className="text-gray-400 text-sm">Nenhuma receita escaneada ainda.</p>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {agruparPorData(medicamentos).map(([data, meds], i) => (
-                    <div key={i} className="border border-gray-100 rounded-xl p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                          <rect x="3" y="4" width="18" height="18" rx="2" stroke="#9CA3AF" strokeWidth="2" />
-                          <path d="M16 2v4M8 2v4M3 10h18" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                        <span className="text-xs font-semibold text-gray-400">
-                          Escaneada em {data}
-                        </span>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        {meds.map(med => (
-                          <div key={med.id} className="flex items-center justify-between">
-                            <span className="text-sm text-gray-700 font-medium">{med.name}</span>
-                            <span className="text-xs text-gray-400">{med.dosage}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+            {/* Link para o histórico de receitas */}
+            <button
+              onClick={() => navigate('/receitas')}
+              className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between hover:border-primary transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="#006B5E" strokeWidth="1.5" strokeLinejoin="round" />
+                    <polyline points="14 2 14 8 20 8" stroke="#006B5E" strokeWidth="1.5" strokeLinejoin="round" />
+                    <line x1="16" y1="13" x2="8" y2="13" stroke="#006B5E" strokeWidth="1.5" strokeLinecap="round" />
+                    <line x1="16" y1="17" x2="8" y2="17" stroke="#006B5E" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
                 </div>
-              )}
-            </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold text-gray-800">Receitas escaneadas</p>
+                  <p className="text-xs text-gray-400">Ver histórico de prescrições</p>
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-gray-300">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
 
             {/* Calendário de adesão — só para pacientes */}
             {usuario.role === 'patient' && (
