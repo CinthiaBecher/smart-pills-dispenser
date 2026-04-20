@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from backend.database import get_db
 from backend.models import ChatHistory, Medication, Schedule, User
 from backend.schemas import ChatMessage, ChatResponse
+from backend.rag import get_relevant_chunks
 
 load_dotenv()
 
@@ -14,23 +15,28 @@ router = APIRouter(prefix="/api/chat", tags=["Chat"])
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-SYSTEM_PROMPT = """Você é um assistente farmacêutico virtual do sistema Smart Pills Dispenser.
+SYSTEM_PROMPT = """Você é um assistente farmacêutico virtual do sistema Smart Pills Dispenser, desenvolvido para apoiar pacientes no uso correto 
+de seus medicamentos.
 
-Seu papel é ajudar o paciente a entender seus medicamentos, horários de uso, possíveis interações e cuidados gerais.
+Seu papel é ajudar o paciente a entender seus medicamentos, horários de uso, possíveis interações e cuidados gerais — sempre como suporte informativo, nunca como substituto de orientação clínica.
 
 Regras que você DEVE seguir:
 - Responda sempre em português, de forma clara e acolhedora.
 - Nunca substitua a orientação de um médico ou farmacêutico presencial.
 - Não faça diagnósticos nem sugira troca ou suspensão de medicamentos sem orientação médica.
 - Se o paciente relatar sintomas graves ou emergências, oriente-o a buscar atendimento médico imediatamente.
+- Quando a dúvida envolver ajuste de dose, interação grave ou decisão clínica, oriente explicitamente a consultar um farmacêutico ou médico antes de agir.
 - Use apenas as informações do contexto do paciente fornecido para personalizar as respostas.
+- Responda de forma estruturada: primeiro a resposta direta, depois os cuidados relevantes, depois o encaminhamento se necessário.
 - Seja objetivo e evite informações excessivas que possam confundir o paciente.
+- Quando informações de bula estiverem disponíveis no contexto, cite-as explicitamente (ex.: "De acordo com a bula...").
+- Quando não houver bula disponível, informe que a resposta é baseada no conhecimento geral de farmacologia e recomende consultar a bula oficial ou um farmacêutico.
+- Você é um modelo de linguagem de IA, não um farmacêutico humano — deixe isso claro quando o paciente demonstrar confusão sobre esse ponto.
 
 Você tem acesso ao perfil atual do paciente com seus medicamentos e horários cadastrados no sistema."""
 
-
-def build_patient_context(user_id: str, db: Session) -> str:
-    """Monta um resumo dos medicamentos e horários do paciente para incluir no contexto."""
+def build_patient_context(user_id: str, db: Session) -> tuple[str, list[str]]:
+    """Retorna (contexto textual, lista de nomes dos medicamentos ativos)."""
     medications = (
         db.query(Medication)
         .filter(Medication.user_id == user_id, Medication.active == True)
@@ -38,7 +44,7 @@ def build_patient_context(user_id: str, db: Session) -> str:
     )
 
     if not medications:
-        return "O paciente não possui medicamentos cadastrados no momento."
+        return "O paciente não possui medicamentos cadastrados no momento.", []
 
     lines = ["Medicamentos ativos do paciente:"]
     for med in medications:
@@ -57,7 +63,7 @@ def build_patient_context(user_id: str, db: Session) -> str:
         line += f" | Horários: {horarios}"
         lines.append(line)
 
-    return "\n".join(lines)
+    return "\n".join(lines), [med.name for med in medications]
 
 
 @router.post("/", response_model=ChatResponse)
@@ -78,11 +84,19 @@ def chat(body: ChatMessage, db: Session = Depends(get_db)):
     history.reverse()  # ordem cronológica
 
     # Monta o contexto do paciente
-    patient_context = build_patient_context(body.user_id, db)
+    patient_context, patient_drug_names = build_patient_context(body.user_id, db)
+
+    # Busca trechos relevantes das bulas dos medicamentos do paciente
+    bula_chunks = get_relevant_chunks(
+        question=body.message,
+        patient_drug_names=patient_drug_names,
+    )
 
     # Monta o histórico no formato que o Gemini espera
     # O system prompt + contexto do paciente vai como primeira mensagem do sistema
     full_system = f"{SYSTEM_PROMPT}\n\n{patient_context}"
+    if bula_chunks:
+        full_system += f"\n\n{bula_chunks}"
 
     messages = []
     for msg in history:

@@ -54,6 +54,25 @@ git commit -m "mensagem descritiva do que foi feito"
 git push
 ```
 
+## Módulo RAG — Bulas de Medicamentos
+
+O conteúdo das bulas já está extraído em `backend/rag/bulas_index.json` e versionado no Git.
+Os PDFs originais **não são versionados** (estão no `.gitignore`) pois são arquivos binários grandes.
+
+Medicamentos disponíveis: dipirona, ibuprofeno, levotiroxina, losartana, sinvastatina.
+
+### Regenerar o índice (só se adicionar novos PDFs)
+
+```bash
+# 1. Coloque os PDFs da Anvisa em backend/rag/pdfs/
+# 2. Rode o extrator:
+python3 -m backend.rag.pdf_extractor
+```
+
+O script lê os PDFs, extrai as seções relevantes (posologia, interações, contraindicações, advertências, reações adversas) e salva em `bulas_index.json`.
+
+---
+
 ### Padrão de mensagens de commit usadas neste projeto
 - `feat:` nova funcionalidade
 - `fix:` correção de bug

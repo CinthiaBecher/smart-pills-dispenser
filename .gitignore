@@ -10,3 +10,8 @@ __pycache__/
 
 # Arquivos do sistema (Mac)
 .DS_Store
+
+# PDFs das bulas (não versionados — conteúdo já extraído em bulas_index.json)
+# Para regenerar o índice, baixe os PDFs manualmente e rode:
+#   python3 -m backend.rag.pdf_extractor
+backend/rag/pdfs/
