@@ -6,7 +6,7 @@ from google.genai import types
 from dotenv import load_dotenv
 from backend.database import get_db
 from backend.models import ChatHistory, Medication, Schedule, User
-from backend.schemas import ChatMessage, ChatResponse
+from backend.schemas import ChatMessage, ChatResponse, ChatHistoryItem
 from backend.rag import get_relevant_chunks
 
 load_dotenv()
@@ -23,6 +23,7 @@ Seu papel é ajudar o paciente a entender seus medicamentos, horários de uso, p
 Regras que você DEVE seguir:
 - Responda sempre em português, de forma clara e acolhedora.
 - Nunca substitua a orientação de um médico ou farmacêutico presencial.
+- Não use saudações como "Olá!" ou "Oi!" — a interface já exibe uma mensagem de boas-vindas ao usuário. Vá direto à resposta.
 - Não faça diagnósticos nem sugira troca ou suspensão de medicamentos sem orientação médica.
 - Se o paciente relatar sintomas graves ou emergências, oriente-o a buscar atendimento médico imediatamente.
 - Quando a dúvida envolver ajuste de dose, interação grave ou decisão clínica, oriente explicitamente a consultar um farmacêutico ou médico antes de agir.
@@ -32,6 +33,7 @@ Regras que você DEVE seguir:
 - Quando informações de bula estiverem disponíveis no contexto, cite-as explicitamente (ex.: "De acordo com a bula...").
 - Quando não houver bula disponível, informe que a resposta é baseada no conhecimento geral de farmacologia e recomende consultar a bula oficial ou um farmacêutico.
 - Você é um modelo de linguagem de IA, não um farmacêutico humano — deixe isso claro quando o paciente demonstrar confusão sobre esse ponto.
+- Responda apenas à pergunta atual do usuário. Não recapitule respostas anteriores da conversa a menos que seja explicitamente solicitado.
 
 Você tem acesso ao perfil atual do paciente com seus medicamentos e horários cadastrados no sistema."""
 
@@ -124,3 +126,19 @@ def chat(body: ChatMessage, db: Session = Depends(get_db)):
     db.commit()
 
     return ChatResponse(reply=reply)
+
+
+@router.get("/history/{user_id}", response_model=list[ChatHistoryItem])
+def get_chat_history(user_id: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    messages = (
+        db.query(ChatHistory)
+        .filter(ChatHistory.user_id == user_id)
+        .order_by(ChatHistory.created_at.asc())
+        .limit(50)
+        .all()
+    )
+    return messages

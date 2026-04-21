@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
 import BottomNav from '../components/BottomNav'
 
 const BASE = 'http://localhost:8000'
@@ -29,7 +30,9 @@ function BolhaBot({ texto }) {
     <div className="flex items-end gap-2 max-w-[82%]">
       <AvatarBot />
       <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-        <p className="text-gray-800 text-sm leading-relaxed">{texto}</p>
+        <div className="text-gray-800 text-sm leading-relaxed prose prose-sm max-w-none">
+          <ReactMarkdown>{texto}</ReactMarkdown>
+        </div>
       </div>
     </div>
   )
@@ -63,9 +66,32 @@ export default function Chat() {
   const [mensagens, setMensagens] = useState([MENSAGEM_INICIAL])
   const [input, setInput] = useState('')
   const [digitando, setDigitando] = useState(false)
+  const [carregando, setCarregando] = useState(true)
   const fimRef = useRef(null)
 
   const userId = localStorage.getItem('userId') || '1'
+
+  // Carrega histórico do banco ao montar o componente
+  useEffect(() => {
+    async function carregarHistorico() {
+      try {
+        const res = await fetch(`${BASE}/api/chat/history/${userId}`)
+        const data = await res.json()
+        if (Array.isArray(data) && data.length > 0) {
+          setMensagens(data.map((msg) => ({
+            de: msg.role === 'user' ? 'user' : 'bot',
+            texto: msg.content,
+          })))
+        }
+        // se vazio, mantém MENSAGEM_INICIAL (já é o estado inicial)
+      } catch {
+        // falha silenciosa — mantém MENSAGEM_INICIAL
+      } finally {
+        setCarregando(false)
+      }
+    }
+    carregarHistorico()
+  }, [])
 
   // Rola para o final sempre que chegar nova mensagem
   useEffect(() => {
@@ -134,15 +160,21 @@ export default function Chat() {
       </header>
 
       {/* Área de mensagens — scroll no meio */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
-        {mensagens.map((msg, i) =>
-          msg.de === 'bot'
-            ? <BolhaBot key={i} texto={msg.texto} />
-            : <BolhaUsuario key={i} texto={msg.texto} />
-        )}
-        {digitando && <DigitandoIndicator />}
-        <div ref={fimRef} />
-      </div>
+      {carregando ? (
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-gray-400 text-sm">Carregando histórico...</p>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+          {mensagens.map((msg, i) =>
+            msg.de === 'bot'
+              ? <BolhaBot key={i} texto={msg.texto} />
+              : <BolhaUsuario key={i} texto={msg.texto} />
+          )}
+          {digitando && <DigitandoIndicator />}
+          <div ref={fimRef} />
+        </div>
+      )}
 
       {/* Área inferior — acima do nav */}
       <div className="bg-background px-4 pt-2 pb-20 shrink-0 z-30">

@@ -123,6 +123,14 @@ class ChatResponse(BaseModel):
     reply: str
 
 
+class ChatHistoryItem(BaseModel):
+    role: str
+    content: str
+
+    class Config:
+        from_attributes = True
+
+
 # Dados necessários para CRIAR um agendamento
 class ScheduleCreate(BaseModel):
     medication_id: uuid.UUID
