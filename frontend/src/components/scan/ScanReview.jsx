@@ -20,31 +20,6 @@ const ROUTE_OPTIONS = [
   'injetável', 'retal', 'nasal', 'oftálmico',
 ]
 
-// Normaliza o que a IA retornou para uma das opções do dropdown.
-// A IA pode retornar variações como "duas vezes ao dia", "2 vezes/dia", "a cada 12h" etc.
-// Se não reconhecer, retorna a string original (aparece no campo mesmo sem estar na lista).
-function normalizeFrequency(raw) {
-  if (!raw) return ''
-  const f = raw.toLowerCase().trim()
-
-  if (f.includes('4x') || f.includes('4 vez') || f.includes('quatro vez') || f.includes('a cada 6'))
-    return '4x ao dia'
-  if (f.includes('3x') || f.includes('3 vez') || f.includes('três vez') || f.includes('a cada 8'))
-    return '3x ao dia'
-  if (f.includes('2x') || f.includes('2 vez') || f.includes('duas vez') || f.includes('a cada 12'))
-    return '2x ao dia'
-  if (f.includes('1x') || f.includes('1 vez') || f.includes('uma vez') || f.includes('diári') || f.includes('diario') || f.includes('a cada 24'))
-    return '1x ao dia'
-  if (f.includes('a cada 6'))  return 'A cada 6 horas'
-  if (f.includes('a cada 8'))  return 'A cada 8 horas'
-  if (f.includes('a cada 12')) return 'A cada 12 horas'
-  if (f.includes('dormir') || f.includes('deitar')) return 'Ao dormir'
-  if (f.includes('noite') && !f.includes('manhã')) return 'À noite'
-  if (f.includes('manhã') && !f.includes('noite')) return 'De manhã'
-
-  return raw // mantém o original se não reconhecer
-}
-
 // Espelha a lógica do backend (frequency_to_times) para feedback instantâneo
 function frequencyToTimes(frequency) {
   if (!frequency) return ['08:00']
@@ -120,17 +95,13 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
   const [horarioTomado, setHorarioTomado] = useState({}) // { [index]: 'HH:MM' }
   const [avisoIntervalo, setAvisoIntervalo] = useState(null) // string de aviso ou null
 
-  // Normaliza as frequências e inicializa os horários ao montar o componente
+  // Inicializa os horários ao montar o componente (frequência já vem normalizada do backend)
   useEffect(() => {
-    const normalizados = medicamentos.map(med => {
-      const freq = normalizeFrequency(med.frequency)
-      return {
-        ...med,
-        frequency: freq,
-        _times: frequencyToTimes(freq), // horários editáveis, derivados da frequência
-      }
-    })
-    onChange(normalizados)
+    const comHorarios = medicamentos.map(med => ({
+      ...med,
+      _times: frequencyToTimes(med.frequency),
+    }))
+    onChange(comHorarios)
   }, [])
 
   // Verifica duplicatas no banco ao montar o componente
@@ -253,7 +224,7 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
           <div className="flex-1 mr-2">
             <h3 className="font-bold text-gray-800">{med.name || 'Medicamento'}</h3>
             <p className="text-gray-400 text-xs mt-0.5">
-              {med.dosage}{med.description ? ` · ${med.description}` : ''}
+              {med.dosage}
             </p>
           </div>
           <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${

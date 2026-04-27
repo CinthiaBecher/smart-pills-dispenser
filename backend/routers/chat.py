@@ -5,7 +5,7 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 from backend.database import get_db
-from backend.models import ChatHistory, Medication, Schedule, User
+from backend.models import ChatHistory, Medication, Schedule, User, PatientCaregiver
 from backend.schemas import ChatMessage, ChatResponse, ChatHistoryItem
 from backend.rag import get_relevant_chunks
 
@@ -39,9 +39,21 @@ Você tem acesso ao perfil atual do paciente com seus medicamentos e horários c
 
 def build_patient_context(user_id: str, db: Session) -> tuple[str, list[str]]:
     """Retorna (contexto textual, lista de nomes dos medicamentos ativos)."""
+    # Se o user_id for de um cuidador, usa os medicamentos do paciente vinculado
+    user = db.query(User).filter(User.id == user_id).first()
+    patient_id = user_id
+    if user and user.role == "caregiver":
+        link = (
+            db.query(PatientCaregiver)
+            .filter(PatientCaregiver.caregiver_id == user_id, PatientCaregiver.active == True)
+            .first()
+        )
+        if link:
+            patient_id = str(link.patient_id)
+
     medications = (
         db.query(Medication)
-        .filter(Medication.user_id == user_id, Medication.active == True)
+        .filter(Medication.user_id == patient_id, Medication.active == True)
         .all()
     )
 
@@ -142,3 +154,15 @@ def get_chat_history(user_id: str, db: Session = Depends(get_db)):
         .all()
     )
     return messages
+
+
+@router.delete("/history/{user_id}")
+def clear_chat_history(user_id: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    deleted = db.query(ChatHistory).filter(ChatHistory.user_id == user_id).delete()
+    db.commit()
+
+    return {"message": f"{deleted} mensagem(ns) removida(s)"}

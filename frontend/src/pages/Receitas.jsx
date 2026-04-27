@@ -112,9 +112,7 @@ function DetalheReceita({ id, onVoltar }) {
               <div key={i} className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-gray-800">{med.medication}</p>
-                  {med.description && (
-                    <p className="text-xs text-primary mt-0.5">{med.description}</p>
-                  )}
+
                   <p className="text-xs text-gray-400 mt-0.5">{med.frequency_original}</p>
                 </div>
                 <span className="text-xs text-gray-500 shrink-0 mt-0.5">{med.dosage}</span>

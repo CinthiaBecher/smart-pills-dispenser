@@ -21,6 +21,47 @@ router = APIRouter(prefix="/api/prescriptions", tags=["Prescrições"])
 # Inicializa o cliente Gemini com a chave da API
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+def normalize_frequency(text: str) -> str:
+    """Expande apenas abreviações tipográficas não-ambíguas.
+    Notações de intervalo ("8/8h", "a cada 8 horas") são mantidas intactas.
+    """
+    if not text:
+        return text
+    f = text.strip()
+    fl = f.lower()
+    if re.match(r"^4\s*x\s*/\s*d(ia)?$", fl):
+        return "4x ao dia"
+    if re.match(r"^3\s*x\s*/\s*d(ia)?$", fl):
+        return "3x ao dia"
+    if re.match(r"^2\s*x\s*/\s*d(ia)?$", fl):
+        return "2x ao dia"
+    if re.match(r"^1\s*x\s*/\s*d(ia)?$", fl):
+        return "1x ao dia"
+    if re.match(r"^s\.?o\.?s\.?$", fl) or any(x in fl for x in ["se necessár", "se necessar", "em caso de", "s/n"]):
+        return "SOS"
+    return f
+
+
+def normalize_route(text: str) -> str:
+    """Normaliza variações de via de administração para forma canônica."""
+    if not text:
+        return text
+    f = text.lower().strip()
+    if any(x in f for x in ["oral", "vo", "via oral"]):
+        return "oral"
+    if any(x in f for x in ["sublingual", "sl"]):
+        return "sublingual"
+    if any(x in f for x in ["tópico", "topico", "cutâneo", "cutaneo"]):
+        return "tópico"
+    if any(x in f for x in ["inalat", "inal"]):
+        return "inalatória"
+    if any(x in f for x in ["intravenoso", "iv", "endovenoso", "ev"]):
+        return "intravenoso"
+    if any(x in f for x in ["intramuscular", "im"]):
+        return "intramuscular"
+    return text
+
+
 PRESCRIPTION_PROMPT = """
 Analise esta receita médica e extraia todas as informações presentes.
 Retorne SOMENTE um JSON válido, sem texto adicional, no seguinte formato:
@@ -35,10 +76,9 @@ Retorne SOMENTE um JSON válido, sem texto adicional, no seguinte formato:
       "name": "nome do medicamento",
       "dosage": "dosagem (ex: 50mg)",
       "route": "via de administração (ex: oral)",
-      "instructions": "instruções de uso (ex: tomar em jejum)",
-      "frequency": "frequência (ex: 1x ao dia, a cada 8 horas)",
-      "duration_days": número inteiro de dias de tratamento ou null se uso contínuo/crônico,
-      "description": "indicação terapêutica resumida em português (ex: Anti-hipertensivo, Controle glicêmico, Antibiótico)"
+      "instructions": "condições e contexto de uso — inclui horário do dia, relação com alimentação e outras orientações (ex: 'tomar à noite', 'tomar em jejum 30min antes do café', 'após as refeições', 'tomar com água', 'completar os 7 dias mesmo se melhorar'). Se não houver instruções específicas, use null.",
+      "frequency": "frequência de administração — APENAS a contagem ou intervalo de tempo (ex: '1x ao dia', '2x ao dia', '8/8h', '12/12h', 'SOS', 'dose única'). NÃO inclua horário do dia nem condições de uso aqui.",
+      "duration_days": número inteiro de dias de tratamento ou null se uso contínuo/crônico
     }
   ]
 }
@@ -46,6 +86,12 @@ Retorne SOMENTE um JSON válido, sem texto adicional, no seguinte formato:
 Para duration_days: se a receita mencionar "por X dias", "durante X dias", "por X semanas" (converta para dias),
 "uso contínuo", "uso crônico" ou não mencionar prazo → use null.
 Exemplos: "tomar por 7 dias" → 7, "por 2 semanas" → 14, "uso contínuo" → null.
+
+Exemplos de separação frequency/instructions:
+- Receita diz "1x ao dia à noite" → frequency: "1x ao dia", instructions: "tomar à noite"
+- Receita diz "8/8h após refeições" → frequency: "8/8h", instructions: "após as refeições"
+- Receita diz "12/12h" → frequency: "12/12h", instructions: null
+- Receita diz "SOS em caso de dor" → frequency: "SOS", instructions: "em caso de dor"
 
 Se não conseguir identificar algum campo, use null.
 Se não houver medicamentos visíveis, retorne {"medications": []}.
@@ -95,11 +141,18 @@ async def interpret_prescription(file: UploadFile = File(...)):
 
         # Converte o texto JSON para dicionário Python
         result = json.loads(cleaned)
+        for med in result.get("medications", []):
+            if med.get("frequency"):
+                med["frequency"] = normalize_frequency(med["frequency"])
+            if med.get("route"):
+                med["route"] = normalize_route(med["route"])
         return result
 
     except json.JSONDecodeError:
+        print(f"[prescriptions] JSONDecodeError — resposta bruta do Gemini:\n{raw_text}")
         raise HTTPException(status_code=500, detail="Gemini retornou resposta em formato inválido")
     except Exception as e:
+        print(f"[prescriptions] Erro inesperado: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao processar imagem: {str(e)}")
 
 

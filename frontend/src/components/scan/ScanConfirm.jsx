@@ -66,11 +66,6 @@ export default function ScanConfirm({ medicamentos, onVoltar, onSalvar, salvando
               </h3>
             </div>
 
-            {/* Indicação terapêutica (descrição da IA) */}
-            {med.description && (
-              <p className="text-xs text-primary font-medium mb-3">{med.description}</p>
-            )}
-
             {/* Badges de horários */}
             <div className="flex flex-wrap gap-1.5">
               {horarios.map(h => (
