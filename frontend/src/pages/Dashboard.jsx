@@ -89,7 +89,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [eventos, setEventos] = useState([])
   const [loading, setLoading] = useState(true)
-  const [confirmando, setConfirmando] = useState(null) // id do evento sendo confirmado
+  const [acionando, setAcionando] = useState(null)
 
   const nomeUsuario = localStorage.getItem('userName') || 'Você'
   const userId = localStorage.getItem('userId') || '1'
@@ -107,19 +107,23 @@ export default function Dashboard() {
 
   useEffect(() => { carregarEventos() }, [userId])
 
-  async function confirmarDose(eventId) {
-    setConfirmando(eventId)
+  // Auto-refresh a cada 5s para refletir confirmação do ESP32 automaticamente
+  useEffect(() => {
+    const intervalo = setInterval(carregarEventos, 5000)
+    return () => clearInterval(intervalo)
+  }, [userId])
+
+  async function acionarDispenser(eventId) {
+    setAcionando(eventId)
     try {
-      const res = await fetch(`${BASE}/api/dispensation/confirm`, {
+      const res = await fetch(`${BASE}/api/dispensation/trigger/${eventId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event_id: eventId }),
       })
-      if (res.ok) await carregarEventos() // atualiza a lista
+      if (res.ok) await carregarEventos()
     } catch (err) {
-      console.error('Erro ao confirmar:', err)
+      console.error('Erro ao acionar dispenser:', err)
     } finally {
-      setConfirmando(null)
+      setAcionando(null)
     }
   }
 
@@ -201,13 +205,28 @@ export default function Dashboard() {
               </div>
             )}
 
-            <button
-              onClick={() => confirmarDose(proximaDose.event_id)}
-              disabled={confirmando === proximaDose.event_id}
-              className="w-full bg-accent hover:bg-accent-dark text-white font-semibold rounded-full py-3 text-sm transition-colors disabled:opacity-60"
-            >
-              {confirmando === proximaDose.event_id ? 'Confirmando...' : 'Confirmar retirada'}
-            </button>
+            {proximaDose.status === 'pending' && (
+              <button
+                onClick={() => acionarDispenser(proximaDose.event_id)}
+                disabled={acionando === proximaDose.event_id}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold rounded-full py-3 text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {acionando === proximaDose.event_id ? 'Acionando...' : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 3l14 9-14 9V3z" fill="white" />
+                    </svg>
+                    Acionar Dispenser
+                  </>
+                )}
+              </button>
+            )}
+
+            {proximaDose.status === 'dispensed' && (
+              <div className="w-full bg-orange-50 border border-orange-200 rounded-full py-3 text-sm text-orange-600 font-semibold text-center">
+                Aguardando retirada no dispenser...
+              </div>
+            )}
           </div>
         )}
 

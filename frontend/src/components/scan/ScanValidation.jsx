@@ -275,7 +275,7 @@ export default function ScanValidation({ dadosReceita, userName, onContinuar, on
 
       {/* Modal de confirmação — receita inválida */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 p-4 pb-6">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <h3 className="font-bold text-gray-800 mb-2">Deseja continuar mesmo assim?</h3>
             <p className="text-sm text-gray-500 mb-6 leading-relaxed">

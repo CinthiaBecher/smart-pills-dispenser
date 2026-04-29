@@ -7,6 +7,7 @@ from collections import defaultdict
 from backend.database import get_db
 from backend.models import DispensationEvent, Schedule, Medication
 from backend.schemas import ConfirmDoseRequest, TodayEventResponse
+import backend.mqtt_client as mqtt_client
 
 router = APIRouter(prefix="/api/dispensation", tags=["Dispensação"])
 
@@ -365,6 +366,55 @@ def get_weekly_adherence(user_id: str, db: Session = Depends(get_db)):
         })
 
     return resultado
+
+
+@router.post("/trigger/{event_id}")
+def trigger_dispense(event_id: str, db: Session = Depends(get_db)):
+    """
+    Frontend chama este endpoint para acionar o dispenser físico via MQTT.
+
+    Fluxo:
+    1. Busca o evento no banco e valida que está pendente
+    2. Pega nome e dosagem do medicamento
+    3. Publica em smartpills/dispense para o ESP32
+    4. ESP32 dispensa, paciente pressiona o botão
+    5. ESP32 publica em smartpills/dispensed
+    6. Backend recebe e atualiza status para "dispensed"
+    """
+    evento = db.query(DispensationEvent).filter(
+        DispensationEvent.id == event_id
+    ).first()
+
+    if not evento:
+        raise HTTPException(status_code=404, detail="Evento não encontrado")
+
+    if evento.status not in ("pending",):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Evento já está com status '{evento.status}' — não pode ser acionado novamente"
+        )
+
+    # Busca schedule → medicamento para ter nome e dosagem
+    schedule = db.query(Schedule).filter(Schedule.id == evento.schedule_id).first()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Agendamento não encontrado")
+
+    med = db.query(Medication).filter(Medication.id == schedule.medication_id).first()
+    if not med:
+        raise HTTPException(status_code=404, detail="Medicamento não encontrado")
+
+    mqtt_client.publish_dispense(
+        event_id        = str(evento.id),
+        schedule_id     = str(evento.schedule_id),
+        medication_name = med.name,
+        medication_dosage = med.dosage,
+    )
+
+    return {
+        "message": "Comando enviado ao dispenser",
+        "event_id": str(evento.id),
+        "medication": f"{med.name} {med.dosage}",
+    }
 
 
 @router.post("/confirm")
