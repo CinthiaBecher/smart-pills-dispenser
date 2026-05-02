@@ -131,6 +131,16 @@ class ChatHistoryItem(BaseModel):
         from_attributes = True
 
 
+# Dados para ATUALIZAR um medicamento (todos opcionais)
+class MedicationEdit(BaseModel):
+    name: Optional[str] = None
+    dosage: Optional[str] = None
+    route: Optional[str] = None
+    instructions: Optional[str] = None
+    duration_days: Optional[int] = None
+    times: Optional[List[str]] = None  # ["08:00", "20:00"] — substitui todos os schedules
+
+
 # Dados necessários para CRIAR um agendamento
 class ScheduleCreate(BaseModel):
     medication_id: uuid.UUID

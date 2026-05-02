@@ -9,6 +9,7 @@ import Escanear from './pages/Escanear'
 import Chat from './pages/Chat'
 import Perfil from './pages/Perfil'
 import Receitas from './pages/Receitas'
+import EditarMedicamento from './pages/EditarMedicamento'
 import TestPanel from './pages/TestPanel'
 
 // Redireciona para o dashboard certo de acordo com o papel do usuário
@@ -31,7 +32,8 @@ export default function App() {
 
         {/* Rotas privadas — exigem login */}
         <Route path="/dashboard"    element={<PrivateRoute><RoleDashboard /></PrivateRoute>} />
-        <Route path="/medicamentos" element={<PrivateRoute><Medicamentos /></PrivateRoute>} />
+        <Route path="/medicamentos"             element={<PrivateRoute><Medicamentos /></PrivateRoute>} />
+        <Route path="/medicamentos/editar/:id"  element={<PrivateRoute><EditarMedicamento /></PrivateRoute>} />
         <Route path="/escanear"     element={<PrivateRoute><Escanear /></PrivateRoute>} />
         <Route path="/chat"         element={<PrivateRoute><Chat /></PrivateRoute>} />
         <Route path="/perfil"       element={<PrivateRoute><Perfil /></PrivateRoute>} />

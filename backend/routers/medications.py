@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from backend.database import get_db
-from backend.models import Medication, User
-from backend.schemas import MedicationCreate, MedicationResponse
+from backend.models import Medication, User, Schedule, DispensationEvent
+from datetime import time as time_type
+from backend.schemas import MedicationCreate, MedicationResponse, MedicationEdit
 
 router = APIRouter(prefix="/api/medications", tags=["Medicamentos"])
 
@@ -70,3 +71,62 @@ def get_medication(medication_id: str, db: Session = Depends(get_db)):
     if not medication:
         raise HTTPException(status_code=404, detail="Medicamento não encontrado")
     return medication
+
+
+# Atualizar medicamento (nome, dosagem, via, instruções, duração e horários)
+@router.patch("/{medication_id}", response_model=MedicationResponse)
+def update_medication(medication_id: str, data: MedicationEdit, db: Session = Depends(get_db)):
+    med = db.query(Medication).filter(Medication.id == medication_id).first()
+    if not med:
+        raise HTTPException(status_code=404, detail="Medicamento não encontrado")
+
+    if data.name         is not None: med.name         = data.name
+    if data.dosage       is not None: med.dosage       = data.dosage
+    if data.route        is not None: med.route        = data.route
+    if data.instructions is not None: med.instructions = data.instructions
+    if data.duration_days is not None: med.duration_days = data.duration_days
+
+    # Atualiza horários sem deletar schedules referenciados por dispensation_events
+    if data.times is not None:
+        new_times = [t for t in data.times if t]
+        existing  = db.query(Schedule).filter(Schedule.medication_id == medication_id).all()
+
+        # Atualiza os schedules existentes com os novos horários (em ordem)
+        for i, sched in enumerate(existing):
+            if i < len(new_times):
+                try:
+                    h, m = map(int, new_times[i].split(':'))
+                    sched.time = time_type(h, m)
+                except (ValueError, AttributeError):
+                    pass
+            else:
+                # Remove schedules excedentes apenas se não tiverem eventos vinculados
+                referenciado = db.query(DispensationEvent).filter(
+                    DispensationEvent.schedule_id == sched.id
+                ).first()
+                if not referenciado:
+                    db.delete(sched)
+
+        # Cria novos schedules para horários além dos existentes
+        for i in range(len(existing), len(new_times)):
+            try:
+                h, m = map(int, new_times[i].split(':'))
+                db.add(Schedule(medication_id=med.id, time=time_type(h, m)))
+            except (ValueError, AttributeError):
+                pass
+
+    db.commit()
+    db.refresh(med)
+    return med
+
+
+# Remover medicamento (soft delete — mantém histórico)
+@router.delete("/{medication_id}")
+def delete_medication(medication_id: str, db: Session = Depends(get_db)):
+    med = db.query(Medication).filter(Medication.id == medication_id).first()
+    if not med:
+        raise HTTPException(status_code=404, detail="Medicamento não encontrado")
+
+    med.active = False
+    db.commit()
+    return {"message": "Medicamento removido"}

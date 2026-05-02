@@ -31,58 +31,76 @@ function diasRestantes(med) {
   return Math.ceil((fim - hoje) / (1000 * 60 * 60 * 24))
 }
 
-function CardMedicamento({ med, horarios }) {
+function CardMedicamento({ med, horarios, onRecarregar }) {
+  const navigate = useNavigate()
   const [menuAberto, setMenuAberto] = useState(false)
-  const ativo   = med.active !== false
-  const restam  = diasRestantes(med)
+  const [removendo, setRemovendo]   = useState(false)
+  const ativo  = med.active !== false
+  const restam = diasRestantes(med)
+
+  async function handleRemover() {
+    if (!confirm(`Remover ${med.name}?`)) return
+    setRemovendo(true)
+    try {
+      await fetch(`${BASE}/api/medications/${med.id}`, { method: 'DELETE' })
+      onRecarregar()
+    } finally {
+      setRemovendo(false)
+    }
+  }
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-      <div className="flex items-start gap-3">
-        <PilulIcon />
+    <>
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div className="flex items-start gap-3">
+          <PilulIcon />
 
-        <div className="flex-1 min-w-0">
-          {/* Nome + badges + menu */}
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <h3 className="font-bold text-gray-800 text-sm leading-tight">{med.name}</h3>
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Badge de dias restantes — só para tratamentos temporários */}
-              {restam !== null && restam > 0 && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
-                  {restam}d restantes
-                </span>
-              )}
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                ativo
-                  ? 'bg-green-100 text-primary'
-                  : 'bg-gray-100 text-gray-400'
-              }`}>
-                {ativo ? 'Ativo' : 'Inativo'}
-              </span>
-              <div className="relative">
-                <button
-                  onClick={() => setMenuAberto(!menuAberto)}
-                  className="text-gray-400 hover:text-gray-600 p-1"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="12" cy="5" r="1.5" />
-                    <circle cx="12" cy="12" r="1.5" />
-                    <circle cx="12" cy="19" r="1.5" />
-                  </svg>
-                </button>
-                {menuAberto && (
-                  <div className="absolute right-0 top-6 bg-white rounded-xl shadow-lg border border-gray-100 z-10 py-1 w-36">
-                    <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                      Editar
-                    </button>
-                    <button className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-red-50">
-                      Remover
-                    </button>
-                  </div>
+          <div className="flex-1 min-w-0">
+            {/* Nome + badges + menu */}
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <h3 className="font-bold text-gray-800 text-sm leading-tight">{med.name}</h3>
+              <div className="flex items-center gap-2 shrink-0">
+                {restam !== null && restam > 0 && (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
+                    {restam}d restantes
+                  </span>
                 )}
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  ativo ? 'bg-green-100 text-primary' : 'bg-gray-100 text-gray-400'
+                }`}>
+                  {ativo ? 'Ativo' : 'Inativo'}
+                </span>
+                <div className="relative">
+                  <button
+                    onClick={() => setMenuAberto(!menuAberto)}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="5" r="1.5" />
+                      <circle cx="12" cy="12" r="1.5" />
+                      <circle cx="12" cy="19" r="1.5" />
+                    </svg>
+                  </button>
+                  {menuAberto && (
+                    <div className="absolute right-0 top-6 bg-white rounded-xl shadow-lg border border-gray-100 z-10 py-1 w-36">
+                      <button
+                        onClick={() => { setMenuAberto(false); navigate(`/medicamentos/editar/${med.id}`) }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => { setMenuAberto(false); handleRemover() }}
+                        disabled={removendo}
+                        className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {removendo ? 'Removendo...' : 'Remover'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
           {/* Dosagem e via */}
           <p className="text-gray-500 text-xs mb-1">
@@ -110,9 +128,11 @@ function CardMedicamento({ med, horarios }) {
               ))}
             </div>
           )}
+          </div>
         </div>
       </div>
-    </div>
+
+    </>
   )
 }
 
@@ -160,6 +180,27 @@ export default function Medicamentos() {
     }
     carregar()
   }, [userId])
+
+  function recarregar() {
+    setLoading(true)
+    setErro('')
+    // Roda a mesma lógica do useEffect
+    fetch(`${BASE}/api/medications/user/${userId}`)
+      .then(r => r.json())
+      .then(async meds => {
+        setMedicamentos(meds)
+        const horariosMap = {}
+        await Promise.all(meds.map(async med => {
+          try {
+            const r = await fetch(`${BASE}/api/schedules/medication/${med.id}`)
+            horariosMap[med.id] = r.ok ? await r.json() : []
+          } catch { horariosMap[med.id] = [] }
+        }))
+        setHorariosPorMed(horariosMap)
+      })
+      .catch(() => setErro('Não foi possível carregar os medicamentos.'))
+      .finally(() => setLoading(false))
+  }
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -221,6 +262,7 @@ export default function Medicamentos() {
             key={med.id}
             med={med}
             horarios={horariosPorMed[med.id] || []}
+            onRecarregar={recarregar}
           />
         ))}
       </main>

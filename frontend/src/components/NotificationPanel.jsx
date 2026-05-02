@@ -76,7 +76,7 @@ export default function NotificationPanel({ userId, notifs, onClose, onRefresh }
 
   return (
     // Fundo escuro cobrindo a tela toda
-    <div className="fixed inset-0 bg-black/40 z-50">
+    <div className="fixed inset-0 bg-black/40 z-[60]">
       {/* Painel deslizando de cima */}
       <div
         ref={panelRef}
