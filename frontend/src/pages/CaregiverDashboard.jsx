@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import logo from '../assets/logo.png'
 import BottomNav from '../components/BottomNav'
 import CalendarView from '../components/CalendarView'
+import NotificationPanel from '../components/NotificationPanel'
 
 const BASE = 'http://localhost:8000'
 
@@ -88,6 +89,9 @@ export default function CaregiverDashboard() {
   const [dadosSemana, setDadosSemana] = useState([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
+  const [notifs, setNotifs] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [showNotifs, setShowNotifs] = useState(false)
 
   const nomeUsuario = localStorage.getItem('userName') || 'Cuidador'
   const caregiverId = localStorage.getItem('userId')
@@ -121,6 +125,26 @@ export default function CaregiverDashboard() {
     carregar()
   }, [caregiverId])
 
+  async function carregarNotificacoes() {
+    try {
+      const [resNotifs, resCount] = await Promise.all([
+        fetch(`${BASE}/api/notifications/${caregiverId}`),
+        fetch(`${BASE}/api/notifications/${caregiverId}/unread-count`),
+      ])
+      if (resNotifs.ok) setNotifs(await resNotifs.json())
+      if (resCount.ok)  setUnreadCount((await resCount.json()).count)
+    } catch (err) {
+      console.error('Erro ao carregar notificações:', err)
+    }
+  }
+
+  useEffect(() => { carregarNotificacoes() }, [caregiverId])
+
+  useEffect(() => {
+    const intervalo = setInterval(carregarNotificacoes, 30000)
+    return () => clearInterval(intervalo)
+  }, [caregiverId])
+
   const missedHoje = eventos.filter(e => e.status === 'missed')
   const confirmados = eventos.filter(e => e.status === 'confirmed').length
   const total = eventos.length
@@ -141,9 +165,22 @@ export default function CaregiverDashboard() {
           <img src={logo} alt="Dose Certa" className="w-8 h-8 object-contain" />
           <span className="font-bold text-primary text-base">Dose Certa</span>
         </div>
-        <span className="text-gray-500 text-sm">
-          Olá, <span className="font-semibold text-gray-700">{nomeUsuario}</span>
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-gray-500 text-sm">
+            Olá, <span className="font-semibold text-gray-700">{nomeUsuario}</span>
+          </span>
+          <button className="relative" onClick={() => setShowNotifs(true)}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#6B7280" strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M13.73 21a2 2 0 01-3.46 0" stroke="#6B7280" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
 
       <main className="px-4 pt-4 flex flex-col gap-4">
@@ -314,6 +351,15 @@ export default function CaregiverDashboard() {
 
       </main>
       <BottomNav />
+
+      {showNotifs && (
+        <NotificationPanel
+          userId={caregiverId}
+          notifs={notifs}
+          onClose={() => setShowNotifs(false)}
+          onRefresh={() => { carregarNotificacoes(); setShowNotifs(true) }}
+        />
+      )}
     </div>
   )
 }

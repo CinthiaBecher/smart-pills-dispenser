@@ -89,7 +89,6 @@ function verificarIntervalos(times, frequency) {
 
 export default function ScanReview({ medicamentos, onChange, onProximo, userId }) {
   const [medAtual, setMedAtual] = useState(0)
-  const [confirmados, setConfirmados] = useState(new Set())
   const [duplicatas, setDuplicatas] = useState({})   // { [index]: boolean }
   const [jaTomou, setJaTomou] = useState({})          // { [index]: 'sim' | 'nao' }
   const [horarioTomado, setHorarioTomado] = useState({}) // { [index]: 'HH:MM' }
@@ -138,33 +137,29 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
     atualizar(index, '_times', novos)
   }
 
-  function tentarConfirmarMed(index) {
-    const med = medicamentos[index]
+  function confirmarMed(index) {
+    setAvisoIntervalo(null)
+  }
+
+  function avancar() {
+    confirmarMed(medAtual)
+    if (medAtual < medicamentos.length - 1) {
+      setMedAtual(medAtual + 1)
+    } else {
+      onProximo()
+    }
+  }
+
+  function irParaProximo() {
+    const med = medicamentos[medAtual]
     const aviso = verificarIntervalos(
       med._times || frequencyToTimes(med.frequency),
       med.frequency
     )
     if (aviso) {
-      setAvisoIntervalo(aviso) // mostra o modal de aviso
+      setAvisoIntervalo(aviso) // mostra o modal antes de avançar
     } else {
-      confirmarMed(index)
-    }
-  }
-
-  function confirmarMed(index) {
-    setAvisoIntervalo(null)
-    setConfirmados(prev => new Set([...prev, index]))
-  }
-
-  function irParaProximo() {
-    if (medAtual < medicamentos.length - 1) {
-      // Confirma o atual automaticamente se ainda não confirmou
-      confirmarMed(medAtual)
-      setMedAtual(medAtual + 1)
-    } else {
-      // Último medicamento — vai para o passo 3
-      confirmarMed(medAtual)
-      onProximo()
+      avancar()
     }
   }
 
@@ -178,7 +173,6 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
 
   // Usa os horários editados pelo usuário; se ainda não existirem, calcula da frequência
   const horarios = med._times || frequencyToTimes(med.frequency)
-  const isConfirmado = confirmados.has(medAtual)
   const isDuplicata = duplicatas[medAtual]
   const isUltimo = medAtual === medicamentos.length - 1
 
@@ -227,12 +221,8 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
               {med.dosage}
             </p>
           </div>
-          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${
-            isConfirmado
-              ? 'bg-green-50 text-green-700'
-              : 'bg-yellow-50 text-yellow-600'
-          }`}>
-            {isConfirmado ? 'VALIDADO' : 'AGUARDANDO REVISÃO'}
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 bg-gray-100 text-gray-500">
+            {med.dosage}
           </span>
         </div>
 
@@ -409,18 +399,6 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
           </div>
         )}
 
-        {/* Botão Confirmar este medicamento */}
-        <button
-          onClick={() => tentarConfirmarMed(medAtual)}
-          disabled={isConfirmado}
-          className={`w-full font-semibold rounded-full py-3 transition-colors ${
-            isConfirmado
-              ? 'bg-gray-100 text-gray-400 cursor-default'
-              : 'bg-primary hover:opacity-90 text-white'
-          }`}
-        >
-          {isConfirmado ? '✓ Confirmado' : 'Confirmar este medicamento'}
-        </button>
       </div>
 
       {/* Modal: aviso de intervalo incompatível */}
@@ -444,7 +422,7 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
                 Ajustar horários
               </button>
               <button
-                onClick={() => confirmarMed(medAtual)}
+                onClick={avancar}
                 className="w-full border-2 border-gray-200 text-gray-500 font-semibold rounded-full py-3 hover:bg-gray-50 transition-colors"
               >
                 Confirmar mesmo assim

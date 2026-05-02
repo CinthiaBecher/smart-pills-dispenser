@@ -89,6 +89,23 @@ class DispensationEvent(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id    = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    event_id   = Column(UUID(as_uuid=True), ForeignKey("dispensation_events.id"), nullable=True)
+
+    # dose_ready  → paciente: "Hora de tomar Dipirona 500mg"
+    # dose_taken  → cuidador: "João tomou Dipirona 500mg"
+    # dose_missed → paciente + cuidador: "João não tomou a dose das 08:00"
+    type       = Column(String(20), nullable=False)
+
+    message    = Column(String(255), nullable=False)
+    read       = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+
 class Prescription(Base):
     __tablename__ = "prescriptions"
 

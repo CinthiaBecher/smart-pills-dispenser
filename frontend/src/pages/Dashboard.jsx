@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
 import BottomNav from '../components/BottomNav'
+import NotificationPanel from '../components/NotificationPanel'
 
 const BASE = 'http://localhost:8000'
 const DIAS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
@@ -90,6 +91,9 @@ export default function Dashboard() {
   const [eventos, setEventos] = useState([])
   const [loading, setLoading] = useState(true)
   const [acionando, setAcionando] = useState(null)
+  const [notifs, setNotifs] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [showNotifs, setShowNotifs] = useState(false)
 
   const nomeUsuario = localStorage.getItem('userName') || 'Você'
   const userId = localStorage.getItem('userId') || '1'
@@ -110,6 +114,27 @@ export default function Dashboard() {
   // Auto-refresh a cada 5s para refletir confirmação do ESP32 automaticamente
   useEffect(() => {
     const intervalo = setInterval(carregarEventos, 5000)
+    return () => clearInterval(intervalo)
+  }, [userId])
+
+  async function carregarNotificacoes() {
+    try {
+      const [resNotifs, resCount] = await Promise.all([
+        fetch(`${BASE}/api/notifications/${userId}`),
+        fetch(`${BASE}/api/notifications/${userId}/unread-count`),
+      ])
+      if (resNotifs.ok) setNotifs(await resNotifs.json())
+      if (resCount.ok)  setUnreadCount((await resCount.json()).count)
+    } catch (err) {
+      console.error('Erro ao carregar notificações:', err)
+    }
+  }
+
+  useEffect(() => { carregarNotificacoes() }, [userId])
+
+  // Polling de notificações a cada 30s
+  useEffect(() => {
+    const intervalo = setInterval(carregarNotificacoes, 30000)
     return () => clearInterval(intervalo)
   }, [userId])
 
@@ -152,11 +177,16 @@ export default function Dashboard() {
           <span className="text-gray-500 text-sm">
             Olá, <span className="font-semibold text-gray-700">{nomeUsuario}</span>
           </span>
-          <button className="relative">
+          <button className="relative" onClick={() => setShowNotifs(true)}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#6B7280" strokeWidth="1.8" strokeLinecap="round" />
               <path d="M13.73 21a2 2 0 01-3.46 0" stroke="#6B7280" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
         </div>
       </header>
@@ -300,6 +330,15 @@ export default function Dashboard() {
 
       </main>
       <BottomNav />
+
+      {showNotifs && (
+        <NotificationPanel
+          userId={userId}
+          notifs={notifs}
+          onClose={() => setShowNotifs(false)}
+          onRefresh={() => { carregarNotificacoes(); setShowNotifs(true) }}
+        />
+      )}
     </div>
   )
 }

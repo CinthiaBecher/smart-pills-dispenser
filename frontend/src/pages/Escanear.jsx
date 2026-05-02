@@ -134,6 +134,7 @@ export default function Escanear() {
   const [erroInterpretacao, setErroInterpretacao] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [sucesso, setSucesso] = useState(false)
+  const [erroSalvar, setErroSalvar] = useState('')
 
   const userId = localStorage.getItem('userId') || '1'
   const userName = localStorage.getItem('userName') || ''
@@ -184,7 +185,15 @@ export default function Escanear() {
   // Salva medicamentos + registro da receita no backend
   // Remove campos internos de UI (prefixo _) antes de enviar
   async function handleSalvar() {
+    // Valida o userId antes de qualquer chamada ao backend
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!userId || !UUID_REGEX.test(userId)) {
+      setErroSalvar('Sessão inválida. Saia do app e faça login novamente.')
+      return
+    }
+
     setSalvando(true)
+    setErroSalvar('')
     try {
       const medsParaEnviar = medicamentos.map(({ _replaceDuplicate, _times, ...med }) => med)
       const imageBase64 = arquivo ? await imagemParaBase64(arquivo) : null
@@ -202,10 +211,37 @@ export default function Escanear() {
           image_base64: imageBase64,
         }),
       })
-      if (!res.ok) throw new Error('Erro ao salvar')
+
+      if (!res.ok) {
+        const corpo = await res.json().catch(() => null)
+        console.error('[handleSalvar] erro', res.status, corpo)
+
+        if (res.status === 422) {
+          // FastAPI retorna array de erros de validação — pega o primeiro campo que falhou
+          const erros = Array.isArray(corpo?.detail) ? corpo.detail : []
+          const campo = erros[0]?.loc?.join(' → ') || ''
+          const msg   = erros[0]?.msg || ''
+
+          if (campo.includes('user_id')) {
+            setErroSalvar('Sessão inválida. Saia do app e faça login novamente.')
+          } else if (campo) {
+            setErroSalvar(`Campo inválido: ${campo} — ${msg}`)
+          } else {
+            setErroSalvar('Não foi possível salvar: verifique se todos os medicamentos têm nome e dosagem preenchidos.')
+          }
+        } else if (res.status === 404) {
+          setErroSalvar('Usuário não encontrado. Saia do app e faça login novamente.')
+        } else if (corpo?.detail) {
+          setErroSalvar(`Erro do servidor: ${corpo.detail}`)
+        } else {
+          setErroSalvar('Não foi possível salvar o tratamento. Tente novamente.')
+        }
+        return
+      }
+
       setSucesso(true)
     } catch (err) {
-      alert('Erro ao salvar. Tente novamente.')
+      setErroSalvar('Sem conexão com o servidor. Verifique se o backend está rodando.')
     } finally {
       setSalvando(false)
     }
@@ -289,6 +325,16 @@ export default function Escanear() {
         )}
 
         {/* ── PASSO 3: Confirmar tratamento ───────────────────── */}
+        {erroSalvar && (
+          <div className="mx-1 mb-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-start gap-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5">
+              <circle cx="12" cy="12" r="9" stroke="#D85A30" strokeWidth="2" />
+              <path d="M12 8v4M12 16h.01" stroke="#D85A30" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <p className="text-sm text-red-700 leading-snug">{erroSalvar}</p>
+          </div>
+        )}
+
         {!interpretando && etapa === 3 && (
           <ScanConfirm
             medicamentos={medicamentos}

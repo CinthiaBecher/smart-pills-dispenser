@@ -1,14 +1,15 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import users, medications, schedules, prescriptions, chat, dispensation, caregivers
+from backend.routers import users, medications, schedules, prescriptions, chat, dispensation, caregivers, notifications
 import backend.mqtt_client as mqtt_client
+from backend.scheduler import init_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: conecta ao broker MQTT em background
     mqtt_client.init_mqtt()
+    init_scheduler()
     yield
     # Shutdown: nada a fazer (paho para sozinho)
 
@@ -29,6 +30,7 @@ app.include_router(prescriptions.router)
 app.include_router(chat.router)
 app.include_router(dispensation.router)
 app.include_router(caregivers.router)
+app.include_router(notifications.router)
 
 
 @app.get("/")

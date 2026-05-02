@@ -13,7 +13,7 @@ from datetime import datetime
 import paho.mqtt.client as mqtt
 
 from backend.database import SessionLocal
-from backend.models import DispensationEvent
+from backend.models import DispensationEvent, Medication, Schedule
 
 BROKER      = "broker.hivemq.com"
 PORT        = 1883
@@ -65,6 +65,16 @@ def _on_message(client, userdata, msg):
         evento.confirmed_at  = agora
         db.commit()
         logger.info("Evento %s confirmado via ESP32", event_id)
+
+        # Descobre o patient_id para notificar os cuidadores
+        schedule = db.query(Schedule).filter(Schedule.id == evento.schedule_id).first()
+        med = db.query(Medication).filter(
+            Medication.id == schedule.medication_id
+        ).first() if schedule else None
+
+        if med:
+            from backend.scheduler import notify_dose_taken
+            notify_dose_taken(event_id=event_id, patient_id=str(med.user_id))
 
     except Exception as e:
         logger.error("Erro ao atualizar evento: %s", e)
