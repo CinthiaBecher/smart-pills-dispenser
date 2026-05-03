@@ -410,6 +410,11 @@ def trigger_dispense(event_id: str, db: Session = Depends(get_db)):
         medication_dosage = med.dosage,
     )
 
+    # Marca que o dispenser físico foi acionado
+    evento.status       = "dispensed"
+    evento.dispensed_at = datetime.now()
+    db.commit()
+
     return {
         "message": "Comando enviado ao dispenser",
         "event_id": str(evento.id),

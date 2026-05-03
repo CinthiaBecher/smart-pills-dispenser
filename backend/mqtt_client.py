@@ -59,10 +59,8 @@ def _on_message(client, userdata, msg):
             logger.warning("Evento não encontrado: %s", event_id)
             return
 
-        agora = datetime.now()
         evento.status        = "confirmed"
-        evento.dispensed_at  = agora
-        evento.confirmed_at  = agora
+        evento.confirmed_at  = datetime.now()
         db.commit()
         logger.info("Evento %s confirmado via ESP32", event_id)
 
