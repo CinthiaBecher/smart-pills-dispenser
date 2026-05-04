@@ -195,7 +195,10 @@ export default function Escanear() {
     setSalvando(true)
     setErroSalvar('')
     try {
-      const medsParaEnviar = medicamentos.map(({ _replaceDuplicate, _times, ...med }) => med)
+      const medsParaEnviar = medicamentos.map(({ _replaceDuplicate, _times, ...med }) => ({
+        ...med,
+        times: _times || [],
+      }))
       const imageBase64 = arquivo ? await imagemParaBase64(arquivo) : null
 
       const res = await fetch(`${BASE}/api/prescriptions/confirm`, {

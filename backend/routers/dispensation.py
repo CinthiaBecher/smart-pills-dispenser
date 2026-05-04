@@ -388,7 +388,7 @@ def trigger_dispense(event_id: str, db: Session = Depends(get_db)):
     if not evento:
         raise HTTPException(status_code=404, detail="Evento não encontrado")
 
-    if evento.status not in ("pending",):
+    if evento.status not in ("pending", "missed"):
         raise HTTPException(
             status_code=400,
             detail=f"Evento já está com status '{evento.status}' — não pode ser acionado novamente"
@@ -403,14 +403,20 @@ def trigger_dispense(event_id: str, db: Session = Depends(get_db)):
     if not med:
         raise HTTPException(status_code=404, detail="Medicamento não encontrado")
 
-    mqtt_client.publish_dispense(
-        event_id        = str(evento.id),
-        schedule_id     = str(evento.schedule_id),
-        medication_name = med.name,
+    ok = mqtt_client.publish_dispense(
+        event_id          = str(evento.id),
+        schedule_id       = str(evento.schedule_id),
+        medication_name   = med.name,
         medication_dosage = med.dosage,
     )
 
-    # Marca que o dispenser físico foi acionado
+    if not ok:
+        raise HTTPException(
+            status_code=503,
+            detail="Não foi possível conectar ao dispenser. Verifique a conexão e tente novamente."
+        )
+
+    # Só atualiza o banco se o comando chegou ao broker
     evento.status       = "dispensed"
     evento.dispensed_at = datetime.now()
     db.commit()
@@ -442,5 +448,12 @@ def confirm_dose(req: ConfirmDoseRequest, db: Session = Depends(get_db)):
     evento.confirmed_at = datetime.now()
     db.commit()
     db.refresh(evento)
+
+    # Notifica cuidadores que a dose foi tomada
+    schedule = db.query(Schedule).filter(Schedule.id == evento.schedule_id).first()
+    med = db.query(Medication).filter(Medication.id == schedule.medication_id).first() if schedule else None
+    if med:
+        from backend.scheduler import notify_dose_taken
+        notify_dose_taken(event_id=str(evento.id), patient_id=str(med.user_id))
 
     return {"message": "Dose confirmada!", "event_id": str(evento.id), "confirmed_at": evento.confirmed_at}

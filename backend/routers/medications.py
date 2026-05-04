@@ -100,15 +100,17 @@ def update_medication(medication_id: str, data: MedicationEdit, db: Session = De
                     h, m = map(int, new_times[i].split(':'))
                     sched.time = time_type(h, m)
 
-                    # Atualiza eventos pendentes de hoje para refletir o novo horário
+                    # Atualiza eventos de hoje não confirmados para refletir o novo horário
                     novo_scheduled = datetime.combine(hoje, time_type(h, m))
                     eventos_hoje = db.query(DispensationEvent).filter(
                         DispensationEvent.schedule_id == sched.id,
-                        DispensationEvent.status      == "pending",
+                        DispensationEvent.status.in_(["pending", "dispensed", "missed"]),
                         func.date(DispensationEvent.scheduled_time) == hoje,
                     ).all()
                     for evento in eventos_hoje:
                         evento.scheduled_time = novo_scheduled
+                        if evento.status == "missed":
+                            evento.status = "pending"
 
                 except (ValueError, AttributeError):
                     pass

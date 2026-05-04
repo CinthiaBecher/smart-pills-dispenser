@@ -37,7 +37,7 @@ export default function EditarMedicamento() {
         setVia(med.route || 'oral')
         setInstrucoes(med.instructions || '')
         setDuracao(med.duration_days ?? '')
-        setTimes(hor.map(h => h.time))
+        setTimes(hor.map(h => h.time.slice(0, 5)))
       } catch {
         setErro('Não foi possível carregar o medicamento.')
       } finally {

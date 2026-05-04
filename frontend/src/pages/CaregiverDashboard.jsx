@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import logo from '../assets/logo.png'
 import BottomNav from '../components/BottomNav'
 import CalendarView from '../components/CalendarView'
@@ -97,10 +97,22 @@ export default function CaregiverDashboard() {
   const nomeUsuario = localStorage.getItem('userName') || 'Cuidador'
   const caregiverId = localStorage.getItem('userId')
 
+  const pacienteIdRef = useRef(null)
+
+  async function carregarEventosPaciente(pacienteId) {
+    try {
+      const [resEventos, resSemana] = await Promise.all([
+        fetch(`${BASE}/api/dispensation/today/${pacienteId}`),
+        fetch(`${BASE}/api/dispensation/weekly/${pacienteId}`),
+      ])
+      if (resEventos.ok) setEventos(await resEventos.json())
+      if (resSemana.ok)  setDadosSemana(await resSemana.json())
+    } catch { /* silencioso — mantém dados anteriores */ }
+  }
+
   useEffect(() => {
     async function carregar() {
       try {
-        // 1. Busca o paciente vinculado a este cuidador
         const resPaciente = await fetch(`${BASE}/api/caregivers/my-patient/${caregiverId}`)
         if (!resPaciente.ok) {
           setErro('Nenhum paciente vinculado. Peça ao paciente para criar uma conta e informar seu e-mail no cadastro.')
@@ -109,14 +121,8 @@ export default function CaregiverDashboard() {
         }
         const dadosPaciente = await resPaciente.json()
         setPaciente(dadosPaciente)
-
-        // 2. Busca eventos de hoje do paciente
-        const resEventos = await fetch(`${BASE}/api/dispensation/today/${dadosPaciente.id}`)
-        if (resEventos.ok) setEventos(await resEventos.json())
-
-        // 3. Busca dados da semana para o gráfico
-        const resSemana = await fetch(`${BASE}/api/dispensation/weekly/${dadosPaciente.id}`)
-        if (resSemana.ok) setDadosSemana(await resSemana.json())
+        pacienteIdRef.current = dadosPaciente.id
+        await carregarEventosPaciente(dadosPaciente.id)
       } catch {
         setErro('Não foi possível conectar ao servidor.')
       } finally {
@@ -125,6 +131,14 @@ export default function CaregiverDashboard() {
     }
     carregar()
   }, [caregiverId])
+
+  // Refresh automático a cada 5s (igual ao dashboard do paciente)
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      if (pacienteIdRef.current) carregarEventosPaciente(pacienteIdRef.current)
+    }, 5000)
+    return () => clearInterval(intervalo)
+  }, [])
 
   async function carregarNotificacoes() {
     try {
@@ -224,36 +238,6 @@ export default function CaregiverDashboard() {
               )}
             </div>
 
-            {/* Alerta: doses perdidas hoje */}
-            {missedHoje.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#D85A30" strokeWidth="2" strokeLinecap="round" />
-                      <path d="M13.73 21a2 2 0 01-3.46 0" stroke="#D85A30" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-red-700">
-                      {missedHoje.length === 1 ? '1 dose perdida hoje' : `${missedHoje.length} doses perdidas hoje`}
-                    </p>
-                    <p className="text-xs text-red-400">O paciente não confirmou as doses abaixo</p>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {missedHoje.map(e => (
-                    <div key={e.event_id} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2 border border-red-100">
-                      <MissedIcon />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">{e.medication_name}</p>
-                        <p className="text-xs text-gray-400">{e.medication_dosage} · prevista às {formatarHora(e.scheduled_time)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Card: Agenda de hoje (read-only) */}
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">

@@ -222,7 +222,18 @@ def confirm_prescription(body: PrescriptionConfirmRequest, db: Session = Depends
         db.add(medication)
         db.flush()
 
-        times = frequency_to_times(med_data.frequency, med_data.instructions)
+        if med_data.times:
+            times = []
+            for ts in med_data.times:
+                try:
+                    parts = ts.split(':')
+                    times.append(time(int(parts[0]), int(parts[1])))
+                except (ValueError, IndexError):
+                    pass
+            if not times:
+                times = frequency_to_times(med_data.frequency, med_data.instructions)
+        else:
+            times = frequency_to_times(med_data.frequency, med_data.instructions)
         schedules_created = []
         for t in times:
             schedule = Schedule(medication_id=medication.id, time=t)

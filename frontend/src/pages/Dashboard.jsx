@@ -91,6 +91,7 @@ export default function Dashboard() {
   const [eventos, setEventos] = useState([])
   const [loading, setLoading] = useState(true)
   const [acionando, setAcionando] = useState(null)
+  const [erroAcionar, setErroAcionar] = useState('')
   const [notifs, setNotifs] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifs, setShowNotifs] = useState(false)
@@ -117,6 +118,13 @@ export default function Dashboard() {
     return () => clearInterval(intervalo)
   }, [userId])
 
+  // Força refresh imediato quando a aba volta ao foco (browser throttle em background)
+  useEffect(() => {
+    function onFocus() { carregarEventos() }
+    document.addEventListener('visibilitychange', onFocus)
+    return () => document.removeEventListener('visibilitychange', onFocus)
+  }, [userId])
+
   async function carregarNotificacoes() {
     try {
       const [resNotifs, resCount] = await Promise.all([
@@ -140,13 +148,17 @@ export default function Dashboard() {
 
   async function acionarDispenser(eventId) {
     setAcionando(eventId)
+    setErroAcionar('')
     try {
-      const res = await fetch(`${BASE}/api/dispensation/trigger/${eventId}`, {
-        method: 'POST',
-      })
-      if (res.ok) await carregarEventos()
-    } catch (err) {
-      console.error('Erro ao acionar dispenser:', err)
+      const res = await fetch(`${BASE}/api/dispensation/trigger/${eventId}`, { method: 'POST' })
+      if (res.ok) {
+        await carregarEventos()
+      } else {
+        const corpo = await res.json().catch(() => null)
+        setErroAcionar(corpo?.detail || 'Não foi possível acionar o dispenser. Tente novamente.')
+      }
+    } catch {
+      setErroAcionar('Sem conexão com o servidor.')
     } finally {
       setAcionando(null)
     }
@@ -192,6 +204,17 @@ export default function Dashboard() {
       </header>
 
       <main className="px-4 pt-4 flex flex-col gap-4">
+
+        {erroAcionar && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-sm text-red-700">{erroAcionar}</p>
+            <button onClick={() => setErroAcionar('')} className="text-red-400 shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* Loading */}
         {loading && (
@@ -289,7 +312,15 @@ export default function Dashboard() {
                     <p className="text-xs text-gray-400">{e.medication_dosage}</p>
                   </div>
                   {e.status === 'confirmed'  && <CheckIcon />}
-                  {e.status === 'missed'     && <MissedIcon />}
+                  {e.status === 'missed' && (
+                    <button
+                      onClick={() => acionarDispenser(e.event_id)}
+                      disabled={acionando === e.event_id}
+                      className="text-xs font-semibold text-danger border border-red-200 rounded-full px-2.5 py-1.5 hover:bg-red-50 transition-colors disabled:opacity-50 shrink-0"
+                    >
+                      {acionando === e.event_id ? '...' : 'Tomar agora'}
+                    </button>
+                  )}
                   {(e.status === 'pending' || e.status === 'dispensed') && <ClockIcon />}
                 </div>
               ))}

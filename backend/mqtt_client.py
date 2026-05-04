@@ -96,20 +96,38 @@ def init_mqtt():
         logger.error("Não foi possível conectar ao broker MQTT: %s", e)
 
 
-def publish_dispense(event_id: str, schedule_id: str, medication_name: str, medication_dosage: str):
+def publish_dispense(event_id: str, schedule_id: str, medication_name: str, medication_dosage: str) -> bool:
     """
     Publica em smartpills/dispense para acionar o ESP32.
-    Payload: {"event_id", "schedule_id", "medication_name", "medication_dosage"}
+    Retorna True se o publish foi enfileirado com sucesso, False caso contrário.
     """
     if _client is None:
         logger.error("MQTT não iniciado — chame init_mqtt() primeiro")
-        return
+        return False
+
+    if not _client.is_connected():
+        logger.warning("MQTT desconectado, tentando reconectar...")
+        try:
+            _client.reconnect()
+        except Exception as e:
+            logger.error("Falha ao reconectar MQTT: %s", e)
+            return False
 
     payload = json.dumps({
-        "event_id":        event_id,
-        "schedule_id":     schedule_id,
-        "medication_name": medication_name,
+        "event_id":          event_id,
+        "schedule_id":       schedule_id,
+        "medication_name":   medication_name,
         "medication_dosage": medication_dosage,
     })
-    _client.publish(TOPIC_PUB, payload, qos=1)
+    result = _client.publish(TOPIC_PUB, payload, qos=1)
+    if result.rc != mqtt.MQTT_ERR_SUCCESS:
+        logger.error("Falha ao publicar MQTT (rc=%s)", result.rc)
+        return False
+
+    result.wait_for_publish(timeout=5)
+    if not result.is_published():
+        logger.error("Timeout: broker MQTT não confirmou o recebimento em 5s")
+        return False
+
     logger.info("Publicado dispense → %s", payload)
+    return True

@@ -140,9 +140,11 @@ def check_dose_missed():
     db = SessionLocal()
     try:
         agora = datetime.now()
+        hoje  = agora.date()
 
-        # Busca todos os eventos ainda não confirmados de hoje
+        # Busca apenas os eventos de hoje ainda não confirmados
         eventos_pendentes = db.query(DispensationEvent).filter(
+            sa_func.date(DispensationEvent.scheduled_time) == hoje,
             DispensationEvent.status.in_(["pending", "dispensed"]),
         ).all()
 
