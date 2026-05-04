@@ -33,13 +33,14 @@ function diasRestantes(med) {
 
 function CardMedicamento({ med, horarios, onRecarregar }) {
   const navigate = useNavigate()
-  const [menuAberto, setMenuAberto] = useState(false)
-  const [removendo, setRemovendo]   = useState(false)
+  const [menuAberto, setMenuAberto]         = useState(false)
+  const [removendo, setRemovendo]           = useState(false)
+  const [confirmarRemover, setConfirmarRemover] = useState(false)
   const ativo  = med.active !== false
   const restam = diasRestantes(med)
 
-  async function handleRemover() {
-    if (!confirm(`Remover ${med.name}?`)) return
+  async function confirmarERemover() {
+    setConfirmarRemover(false)
     setRemovendo(true)
     try {
       await fetch(`${BASE}/api/medications/${med.id}`, { method: 'DELETE' })
@@ -51,6 +52,39 @@ function CardMedicamento({ med, horarios, onRecarregar }) {
 
   return (
     <>
+      {/* Modal de confirmação de remoção */}
+      {confirmarRemover && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl flex flex-col gap-4">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="#D85A30" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-gray-800 text-base">Remover medicamento?</h3>
+              <p className="text-gray-400 text-sm leading-snug">
+                Tem certeza que deseja remover <span className="font-semibold text-gray-600">{med.name}</span>? Os horários associados também serão removidos.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmarRemover(false)}
+                className="flex-1 py-3 rounded-full border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarERemover}
+                className="flex-1 py-3 rounded-full bg-danger text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+              >
+                Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
         <div className="flex items-start gap-3">
           <PilulIcon />
@@ -90,7 +124,7 @@ function CardMedicamento({ med, horarios, onRecarregar }) {
                         Editar
                       </button>
                       <button
-                        onClick={() => { setMenuAberto(false); handleRemover() }}
+                        onClick={() => { setMenuAberto(false); setConfirmarRemover(true) }}
                         disabled={removendo}
                         className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-red-50 disabled:opacity-50"
                       >
