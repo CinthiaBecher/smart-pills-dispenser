@@ -1,3 +1,5 @@
+import ErrorBanner from '../ErrorBanner'
+
 // Espelha a lógica de geração de horários do backend para exibição no resumo
 function frequencyToTimes(frequency) {
   if (!frequency) return ['08:00']
@@ -51,15 +53,7 @@ export default function ScanConfirm({ medicamentos, onVoltar, onSalvar, salvando
   return (
     <div className="flex flex-col gap-4">
 
-      {erro && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-start gap-3">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5">
-            <circle cx="12" cy="12" r="9" stroke="#D85A30" strokeWidth="2" />
-            <path d="M12 8v4M12 16h.01" stroke="#D85A30" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <p className="text-sm text-red-700 leading-snug">{erro}</p>
-        </div>
-      )}
+      <ErrorBanner erro={erro} />
 
       <p className="text-gray-400 text-sm text-center">
         Revise o resumo antes de salvar o tratamento

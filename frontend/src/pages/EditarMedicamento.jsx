@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Loader from '../components/Loader'
+import ErrorBanner from '../components/ErrorBanner'
 
 const BASE = 'http://localhost:8000'
 const ROUTE_OPTIONS = ['oral', 'sublingual', 'tópico', 'inalado', 'injetável', 'retal', 'nasal', 'oftálmico']
@@ -114,15 +115,7 @@ export default function EditarMedicamento() {
       ) : (
         <main className="px-4 pt-4 flex flex-col gap-4">
 
-          {erro && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-start gap-3">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5">
-                <circle cx="12" cy="12" r="9" stroke="#D85A30" strokeWidth="2" />
-                <path d="M12 8v4M12 16h.01" stroke="#D85A30" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              <p className="text-sm text-red-700">{erro}</p>
-            </div>
-          )}
+          <ErrorBanner erro={erro} onClose={() => setErro('')} />
 
           {/* Nome */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col gap-4">

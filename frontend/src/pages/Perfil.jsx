@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
 import CalendarView from '../components/CalendarView'
 import Loader from '../components/Loader'
+import ErrorBanner from '../components/ErrorBanner'
 
 const BASE = 'http://localhost:8000'
 const OPCOES_TIMEOUT = [15, 30, 45, 60]
@@ -316,9 +317,7 @@ export default function Perfil() {
                     )}
                   </button>
                 </div>
-                {erroCuidador && (
-                  <p className="text-danger text-xs mt-2">{erroCuidador}</p>
-                )}
+                <ErrorBanner erro={erroCuidador} onClose={() => setErroCuidador('')} />
               </div>
             )}
 

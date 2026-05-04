@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
 import BottomNav from '../components/BottomNav'
 import NotificationPanel from '../components/NotificationPanel'
+import ErrorBanner from '../components/ErrorBanner'
 
 const BASE = 'http://localhost:8000'
 const DIAS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
@@ -205,16 +206,7 @@ export default function Dashboard() {
 
       <main className="px-4 pt-4 flex flex-col gap-4">
 
-        {erroAcionar && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
-            <p className="text-sm text-red-700">{erroAcionar}</p>
-            <button onClick={() => setErroAcionar('')} className="text-red-400 shrink-0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-        )}
+        <ErrorBanner erro={erroAcionar} onClose={() => setErroAcionar('')} />
 
         {/* Loading */}
         {loading && (

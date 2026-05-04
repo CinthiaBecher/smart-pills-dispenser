@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import ScanValidation from '../components/scan/ScanValidation'
 import ScanReview from '../components/scan/ScanReview'
 import ScanConfirm from '../components/scan/ScanConfirm'
+import ErrorBanner from '../components/ErrorBanner'
 
 const BASE = 'http://localhost:8000'
 
@@ -296,11 +297,8 @@ export default function Escanear() {
           </div>
         )}
 
-        {/* Erro na interpretação */}
-        {erroInterpretacao && !interpretando && (
-          <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-danger text-sm text-center">
-            {erroInterpretacao}
-          </div>
+        {!interpretando && (
+          <ErrorBanner erro={erroInterpretacao} onClose={() => setErroInterpretacao('')} />
         )}
 
         {/* ── PASSO 1: Capturar (sem alterações) ─────────────── */}

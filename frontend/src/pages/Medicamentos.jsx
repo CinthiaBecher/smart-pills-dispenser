@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BottomNav from '../components/BottomNav'
+import ErrorBanner from '../components/ErrorBanner'
 
 const BASE = 'http://localhost:8000'
 
@@ -273,11 +274,7 @@ export default function Medicamentos() {
           </div>
         )}
 
-        {!loading && erro && (
-          <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-danger text-sm text-center">
-            {erro}
-          </div>
-        )}
+        <ErrorBanner erro={!loading ? erro : ''} />
 
         {!loading && !erro && medicamentos.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
