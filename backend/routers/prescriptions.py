@@ -156,35 +156,37 @@ async def interpret_prescription(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Erro ao processar imagem: {str(e)}")
 
 
-def frequency_to_times(frequency: str) -> list[time]:
+def frequency_to_times(frequency: str, instructions: str = None) -> list[time]:
     """
-    Converte uma string de frequência em uma lista de horários.
-    Usa horários convencionais adequados para um dispensador automático.
+    Converte frequência + instruções em uma lista de horários.
+    Combina os dois campos para detectar período do dia (ex: "1x ao dia" + "tomar à noite" → 22:00).
     Se não reconhecer o padrão, usa 08:00 como padrão seguro.
     """
     if not frequency:
         return [time(8, 0)]
 
-    f = frequency.lower().strip()
+    f        = frequency.lower().strip()
+    inst     = (instructions or "").lower().strip()
+    combined = f"{f} {inst}".strip()  # ex: "1x ao dia tomar à noite"
 
-    # Padrões "Nx ao dia"
-    if "4x" in f or "4 x" in f or "a cada 6" in f:
+    # Padrões "Nx ao dia" e notações de intervalo — definem a contagem, têm prioridade
+    if "4x" in f or "4 x" in f or "a cada 6" in f or "6/6" in f:
         return [time(8, 0), time(12, 0), time(18, 0), time(22, 0)]
-    if "3x" in f or "3 x" in f or "a cada 8" in f:
+    if "3x" in f or "3 x" in f or "a cada 8" in f or "8/8" in f:
         return [time(8, 0), time(14, 0), time(20, 0)]
-    if "2x" in f or "2 x" in f or "a cada 12" in f:
+    if "2x" in f or "2 x" in f or "a cada 12" in f or "12/12" in f:
         return [time(8, 0), time(20, 0)]
 
-    # Padrões por período do dia
-    if "manhã" in f and "noite" in f:
+    # Padrões por período do dia — verifica frequency + instructions combinados
+    if "manhã" in combined and "noite" in combined:
         return [time(8, 0), time(20, 0)]
-    if "manhã" in f and "tarde" in f:
+    if "manhã" in combined and "tarde" in combined:
         return [time(8, 0), time(14, 0)]
-    if "noite" in f or "dormir" in f or "deitar" in f:
+    if "noite" in combined or "dormir" in combined or "deitar" in combined:
         return [time(22, 0)]
-    if "manhã" in f or "jejum" in f:
+    if "manhã" in combined or "jejum" in combined:
         return [time(8, 0)]
-    if "tarde" in f or "almoço" in f:
+    if "tarde" in combined or "almoço" in combined:
         return [time(12, 0)]
 
     # Padrão "1x ao dia" ou qualquer menção a "dia"
@@ -220,7 +222,7 @@ def confirm_prescription(body: PrescriptionConfirmRequest, db: Session = Depends
         db.add(medication)
         db.flush()
 
-        times = frequency_to_times(med_data.frequency)
+        times = frequency_to_times(med_data.frequency, med_data.instructions)
         schedules_created = []
         for t in times:
             schedule = Schedule(medication_id=medication.id, time=t)

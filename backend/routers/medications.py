@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import date, timedelta
+from sqlalchemy import func
+from datetime import date, datetime, timedelta
 from backend.database import get_db
 from backend.models import Medication, User, Schedule, DispensationEvent
 from datetime import time as time_type
@@ -92,11 +93,23 @@ def update_medication(medication_id: str, data: MedicationEdit, db: Session = De
         existing  = db.query(Schedule).filter(Schedule.medication_id == medication_id).all()
 
         # Atualiza os schedules existentes com os novos horários (em ordem)
+        hoje = date.today()
         for i, sched in enumerate(existing):
             if i < len(new_times):
                 try:
                     h, m = map(int, new_times[i].split(':'))
                     sched.time = time_type(h, m)
+
+                    # Atualiza eventos pendentes de hoje para refletir o novo horário
+                    novo_scheduled = datetime.combine(hoje, time_type(h, m))
+                    eventos_hoje = db.query(DispensationEvent).filter(
+                        DispensationEvent.schedule_id == sched.id,
+                        DispensationEvent.status      == "pending",
+                        func.date(DispensationEvent.scheduled_time) == hoje,
+                    ).all()
+                    for evento in eventos_hoje:
+                        evento.scheduled_time = novo_scheduled
+
                 except (ValueError, AttributeError):
                     pass
             else:

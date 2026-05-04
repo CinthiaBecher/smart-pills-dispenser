@@ -12,6 +12,7 @@ quando o ESP32 confirma, e pelo endpoint /confirm quando o paciente confirma no 
 
 import logging
 from datetime import datetime, timedelta
+from sqlalchemy import func as sa_func
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -79,19 +80,17 @@ def _get_caregiver_ids(db, patient_id: str) -> list[str]:
 
 def check_dose_ready():
     """
-    Busca eventos cujo horário já chegou (scheduled_time <= agora)
-    mas que ainda estão 'pending'. Notifica o paciente.
-
-    Janela: de agora até 2 minutos atrás — evita pegar eventos muito antigos
-    que já foram tratados em execuções anteriores do scheduler.
+    Busca todos os eventos de hoje cujo horário já chegou (scheduled_time <= agora)
+    e que ainda estão 'pending'. Notifica o paciente.
+    _ja_notificou() garante que a notificação seja criada apenas uma vez por evento.
     """
     db = SessionLocal()
     try:
-        agora  = datetime.now()
-        janela = agora - timedelta(minutes=2)
+        agora = datetime.now()
+        hoje  = agora.date()
 
         eventos = db.query(DispensationEvent).filter(
-            DispensationEvent.scheduled_time >= janela,
+            sa_func.date(DispensationEvent.scheduled_time) == hoje,
             DispensationEvent.scheduled_time <= agora,
             DispensationEvent.status         == "pending",
         ).all()
