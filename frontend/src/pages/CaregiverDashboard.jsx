@@ -3,6 +3,7 @@ import logo from '../assets/logo.png'
 import BottomNav from '../components/BottomNav'
 import CalendarView from '../components/CalendarView'
 import NotificationPanel from '../components/NotificationPanel'
+import Loader from '../components/Loader'
 
 const BASE = 'http://localhost:8000'
 
@@ -185,13 +186,7 @@ export default function CaregiverDashboard() {
 
       <main className="px-4 pt-4 flex flex-col gap-4">
 
-        {/* Loading */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-            <p className="text-gray-400 text-sm">Carregando dados do paciente...</p>
-          </div>
-        )}
+        {loading && <Loader mensagem="Carregando dados do paciente..." />}
 
         {/* Erro: sem vínculo */}
         {!loading && erro && (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import Loader from '../components/Loader'
 
 const BASE = 'http://localhost:8000'
 
@@ -16,11 +17,7 @@ function DetalheReceita({ id, onVoltar }) {
   }, [id])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-gray-400 text-sm">Carregando...</p>
-      </div>
-    )
+    return <Loader />
   }
 
   if (!receita) {
@@ -130,16 +127,37 @@ export default function Receitas() {
   const navigate = useNavigate()
   const [receitas, setReceitas] = useState([])
   const [loading, setLoading] = useState(true)
-  const [receitaSelecionada, setReceitaSelecionada] = useState(null) // id ou null
+  const [receitaSelecionada, setReceitaSelecionada] = useState(null)
+  const [nomePaciente, setNomePaciente] = useState(null)
 
   const userId = localStorage.getItem('userId')
+  const role   = localStorage.getItem('userRole')
 
   useEffect(() => {
-    fetch(`${BASE}/api/prescriptions/user/${userId}`)
-      .then(r => r.json())
-      .then(data => { setReceitas(Array.isArray(data) ? data : []); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [userId])
+    async function carregar() {
+      try {
+        let targetId = userId
+
+        // Cuidador: busca o paciente vinculado e mostra as receitas dele
+        if (role === 'caregiver') {
+          const res = await fetch(`${BASE}/api/caregivers/my-patient/${userId}`)
+          if (!res.ok) { setLoading(false); return }
+          const paciente = await res.json()
+          targetId = paciente.id
+          setNomePaciente(paciente.name)
+        }
+
+        const res = await fetch(`${BASE}/api/prescriptions/user/${targetId}`)
+        const data = await res.json()
+        setReceitas(Array.isArray(data) ? data : [])
+      } catch {
+        // mantém lista vazia
+      } finally {
+        setLoading(false)
+      }
+    }
+    carregar()
+  }, [userId, role])
 
   function formatarData(iso) {
     if (!iso) return '—'
@@ -167,7 +185,11 @@ export default function Receitas() {
           </svg>
         </button>
         <h1 className="text-lg font-bold text-gray-800 flex-1 text-center pr-6">
-          {receitaSelecionada ? 'Detalhes da Receita' : 'Receitas Escaneadas'}
+          {receitaSelecionada
+            ? 'Detalhes da Receita'
+            : nomePaciente
+              ? `Receitas de ${nomePaciente.split(' ')[0]}`
+              : 'Receitas Escaneadas'}
         </h1>
       </header>
 
@@ -184,11 +206,7 @@ export default function Receitas() {
         {/* Lista */}
         {!receitaSelecionada && (
           <>
-            {loading && (
-              <div className="flex items-center justify-center py-20">
-                <p className="text-gray-400 text-sm">Carregando...</p>
-              </div>
-            )}
+            {loading && <Loader />}
 
             {!loading && receitas.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -198,13 +216,19 @@ export default function Receitas() {
                     <circle cx="12" cy="13" r="4" stroke="#9CA3AF" strokeWidth="1.5" />
                   </svg>
                 </div>
-                <p className="text-gray-400 text-sm">Nenhuma receita escaneada ainda.</p>
-                <button
-                  onClick={() => navigate('/escanear')}
-                  className="text-primary text-sm font-semibold"
-                >
-                  Escanear primeira receita →
-                </button>
+                <p className="text-gray-400 text-sm">
+                  {nomePaciente
+                    ? `${nomePaciente.split(' ')[0]} ainda não escaneou nenhuma receita.`
+                    : 'Nenhuma receita escaneada ainda.'}
+                </p>
+                {!nomePaciente && (
+                  <button
+                    onClick={() => navigate('/escanear')}
+                    className="text-primary text-sm font-semibold"
+                  >
+                    Escanear primeira receita →
+                  </button>
+                )}
               </div>
             )}
 
