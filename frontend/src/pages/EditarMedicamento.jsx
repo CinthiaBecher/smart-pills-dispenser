@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import Loader from '../components/Loader'
 
 const BASE = 'http://localhost:8000'
 const ROUTE_OPTIONS = ['oral', 'sublingual', 'tópico', 'inalado', 'injetável', 'retal', 'nasal', 'oftálmico']
@@ -109,9 +110,7 @@ export default function EditarMedicamento() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-        </div>
+        <Loader />
       ) : (
         <main className="px-4 pt-4 flex flex-col gap-4">
 
