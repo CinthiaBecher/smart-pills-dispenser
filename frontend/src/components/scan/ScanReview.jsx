@@ -21,14 +21,21 @@ const ROUTE_OPTIONS = [
 ]
 
 // Espelha a lógica do backend (frequency_to_times) para feedback instantâneo
-function frequencyToTimes(frequency) {
+// Combina frequency + instructions para detectar período do dia
+function frequencyToTimes(frequency, instructions = '') {
   if (!frequency) return ['08:00']
-  const f = frequency.toLowerCase()
-  if (f.includes('4x') || f.includes('a cada 6')) return ['08:00', '12:00', '18:00', '22:00']
-  if (f.includes('3x') || f.includes('a cada 8')) return ['08:00', '14:00', '20:00']
-  if (f.includes('2x') || f.includes('a cada 12') || (f.includes('manhã') && f.includes('noite'))) return ['08:00', '20:00']
-  if (f.includes('noite') || f.includes('dormir') || f.includes('deitar')) return ['22:00']
-  if (f.includes('manhã') || f.includes('jejum')) return ['08:00']
+  const f        = frequency.toLowerCase()
+  const inst     = (instructions || '').toLowerCase()
+  const combined = `${f} ${inst}`.trim()
+
+  if (f.includes('4x') || f.includes('a cada 6') || f.includes('6/6')) return ['08:00', '12:00', '18:00', '22:00']
+  if (f.includes('3x') || f.includes('a cada 8') || f.includes('8/8')) return ['08:00', '14:00', '20:00']
+  if (f.includes('2x') || f.includes('a cada 12') || f.includes('12/12')) return ['08:00', '20:00']
+  if (combined.includes('manhã') && combined.includes('noite')) return ['08:00', '20:00']
+  if (combined.includes('manhã') && combined.includes('tarde')) return ['08:00', '14:00']
+  if (combined.includes('noite') || combined.includes('dormir') || combined.includes('deitar')) return ['22:00']
+  if (combined.includes('manhã') || combined.includes('jejum')) return ['08:00']
+  if (combined.includes('tarde') || combined.includes('almoço')) return ['12:00']
   return ['08:00']
 }
 
@@ -90,7 +97,9 @@ function verificarIntervalos(times, frequency) {
 export default function ScanReview({ medicamentos, onChange, onProximo, userId }) {
   const [medAtual, setMedAtual] = useState(0)
   const [duplicatas, setDuplicatas] = useState({})   // { [index]: boolean }
-  const [jaTomou, setJaTomou] = useState({})          // { [index]: 'sim' | 'nao' }
+  const [jaTomou, setJaTomou] = useState(            // pré-seleciona "Não" para todos
+    () => Object.fromEntries(medicamentos.map((_, i) => [i, 'nao']))
+  )
   const [horarioTomado, setHorarioTomado] = useState({}) // { [index]: 'HH:MM' }
   const [avisoIntervalo, setAvisoIntervalo] = useState(null) // string de aviso ou null
 
@@ -98,7 +107,8 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
   useEffect(() => {
     const comHorarios = medicamentos.map(med => ({
       ...med,
-      _times: frequencyToTimes(med.frequency),
+      route: med.route || 'oral',   // garante valor padrão se o Gemini retornar null
+      _times: frequencyToTimes(med.frequency, med.instructions),
     }))
     onChange(comHorarios)
   }, [])
@@ -123,7 +133,7 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
     const updated = { ...copia[index], [campo]: valor }
     // Quando a frequência muda, recalcula os horários automaticamente
     if (campo === 'frequency') {
-      updated._times = frequencyToTimes(valor)
+      updated._times = frequencyToTimes(valor, updated.instructions)
     }
     copia[index] = updated
     onChange(copia)
@@ -153,7 +163,7 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
   function irParaProximo() {
     const med = medicamentos[medAtual]
     const aviso = verificarIntervalos(
-      med._times || frequencyToTimes(med.frequency),
+      med._times || frequencyToTimes(med.frequency, med.instructions),
       med.frequency
     )
     if (aviso) {
@@ -164,7 +174,7 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
   }
 
   const totalDoses = medicamentos.reduce(
-    (acc, m) => acc + (m._times || frequencyToTimes(m.frequency)).length,
+    (acc, m) => acc + (m._times || frequencyToTimes(m.frequency, m.instructions)).length,
     0
   )
 
@@ -172,7 +182,7 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
   if (!med) return null
 
   // Usa os horários editados pelo usuário; se ainda não existirem, calcula da frequência
-  const horarios = med._times || frequencyToTimes(med.frequency)
+  const horarios = med._times || frequencyToTimes(med.frequency, med.instructions)
   const isDuplicata = duplicatas[medAtual]
   const isUltimo = medAtual === medicamentos.length - 1
 
@@ -254,7 +264,7 @@ export default function ScanReview({ medicamentos, onChange, onProximo, userId }
                     // Limpa o horário tomado ao trocar para "não"
                     if (opt.value === 'nao') {
                       setHorarioTomado(prev => ({ ...prev, [medAtual]: undefined }))
-                      atualizar(medAtual, '_times', frequencyToTimes(med.frequency))
+                      atualizar(medAtual, '_times', frequencyToTimes(med.frequency, med.instructions))
                     }
                   }}
                   className="hidden"

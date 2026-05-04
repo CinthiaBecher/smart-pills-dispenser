@@ -287,13 +287,13 @@ export default function ScanValidation({ dadosReceita, userName, onContinuar, on
                 onClick={() => setShowModal(false)}
                 className="w-full bg-accent hover:bg-accent-dark text-white font-semibold rounded-full py-3 transition-colors"
               >
-                Não, Voltar
+                Voltar
               </button>
               <button
                 onClick={() => { setShowModal(false); onContinuar() }}
                 className="w-full border-2 border-gray-200 text-gray-500 font-semibold rounded-full py-3 hover:bg-gray-50 transition-colors"
               >
-                Sim, Continuar assim mesmo
+                Continuar assim mesmo
               </button>
             </div>
           </div>

@@ -252,6 +252,7 @@ export default function Escanear() {
     if (etapa === 3) {
       setEtapa(2)
       setSubEtapa('revisao')
+      setErroSalvar('')
     } else if (etapa === 2 && subEtapa === 'revisao') {
       setSubEtapa('validacao')
     } else if (etapa === 2 && subEtapa === 'validacao') {
@@ -325,23 +326,14 @@ export default function Escanear() {
         )}
 
         {/* ── PASSO 3: Confirmar tratamento ───────────────────── */}
-        {erroSalvar && (
-          <div className="mx-1 mb-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-start gap-3">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5">
-              <circle cx="12" cy="12" r="9" stroke="#D85A30" strokeWidth="2" />
-              <path d="M12 8v4M12 16h.01" stroke="#D85A30" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <p className="text-sm text-red-700 leading-snug">{erroSalvar}</p>
-          </div>
-        )}
-
         {!interpretando && etapa === 3 && (
           <ScanConfirm
             medicamentos={medicamentos}
-            onVoltar={() => { setEtapa(2); setSubEtapa('revisao') }}
+            onVoltar={() => { setEtapa(2); setSubEtapa('revisao'); setErroSalvar('') }}
             onSalvar={handleSalvar}
             salvando={salvando}
             sucesso={sucesso}
+            erro={erroSalvar}
             navigate={navigate}
           />
         )}
