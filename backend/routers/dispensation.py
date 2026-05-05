@@ -55,6 +55,16 @@ def get_today_events(user_id: str, db: Session = Depends(get_db)):
     eventos_resposta = []
 
     for schedule in schedules_hoje:
+        med = med_map[schedule.medication_id]
+
+        # Pula se o tratamento ainda não começou ou já terminou
+        if med.start_date and med.start_date > hoje:
+            continue
+        if med.duration_days and med.start_date:
+            fim = med.start_date + timedelta(days=med.duration_days)
+            if hoje >= fim:
+                continue
+
         # Monta o datetime completo da dose de hoje (ex: 2026-04-11 08:00:00)
         scheduled_dt = datetime.combine(hoje, schedule.time)
 
@@ -76,7 +86,6 @@ def get_today_events(user_id: str, db: Session = Depends(get_db)):
             db.commit()
             db.refresh(evento)
 
-        med = med_map[schedule.medication_id]
         eventos_resposta.append(TodayEventResponse(
             event_id=evento.id,
             schedule_id=schedule.id,
