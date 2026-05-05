@@ -204,12 +204,49 @@ def check_dose_missed():
         db.close()
 
 
+# ── Tarefa 3 — Dispenser acionado mas não retirado ───────────────────────────
+
+DISPENSED_TIMEOUT_MINUTES = 10
+
+def check_dispensed_timeout():
+    """
+    Reverte eventos 'dispensed' para 'pending' após DISPENSED_TIMEOUT_MINUTES
+    sem confirmação. Permite que o paciente acione o dispenser novamente.
+    """
+    db = SessionLocal()
+    try:
+        agora  = datetime.now()
+        limite = agora - timedelta(minutes=DISPENSED_TIMEOUT_MINUTES)
+
+        eventos = db.query(DispensationEvent).filter(
+            DispensationEvent.status       == "dispensed",
+            DispensationEvent.dispensed_at <= limite,
+        ).all()
+
+        for evento in eventos:
+            evento.status = "pending"
+            logger.info(
+                "Evento %s revertido dispensed → pending (sem retirada em %smin)",
+                evento.id, DISPENSED_TIMEOUT_MINUTES,
+            )
+
+        if eventos:
+            db.commit()
+
+    except Exception as e:
+        logger.error("Erro em check_dispensed_timeout: %s", e)
+        db.rollback()
+    finally:
+        db.close()
+
+
 # ── Inicialização ─────────────────────────────────────────────────────────────
 
 def init_scheduler():
-    """Inicia o scheduler com as duas tarefas. Chamado no startup do FastAPI."""
-    _scheduler.add_job(check_dose_ready,  "interval", seconds=60, id="dose_ready")
-    _scheduler.add_job(check_dose_missed, "interval", seconds=60, id="dose_missed")
+    """Inicia o scheduler com as três tarefas. Chamado no startup do FastAPI."""
+    _scheduler.add_job(check_dose_ready,        "interval", seconds=60, id="dose_ready")
+    _scheduler.add_job(check_dose_missed,        "interval", seconds=60, id="dose_missed")
+    _scheduler.add_job(check_dispensed_timeout,  "interval", seconds=60, id="dispensed_timeout")
     _scheduler.start()
     logger.info("Scheduler iniciado — verificando doses a cada 60s")
 

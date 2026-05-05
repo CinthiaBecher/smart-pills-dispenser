@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
 import BottomNav from '../components/BottomNav'
@@ -93,6 +93,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [acionando, setAcionando] = useState(null)
   const [erroAcionar, setErroAcionar] = useState('')
+  const [cardAtivo, setCardAtivo] = useState(0)
+  const carrosselRef = useRef(null)
   const [notifs, setNotifs] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifs, setShowNotifs] = useState(false)
@@ -165,8 +167,10 @@ export default function Dashboard() {
     }
   }
 
-  // Próxima dose: primeiro evento pendente ou dispensado
-  const proximaDose = eventos.find(e => e.status === 'pending' || e.status === 'dispensed')
+  // Doses acionáveis: pendentes, aguardando retirada e atrasadas de hoje
+  const dosesAcionaveis = eventos.filter(e =>
+    e.status === 'pending' || e.status === 'dispensed' || e.status === 'missed'
+  )
 
   // Adesão: % de doses confirmadas hoje
   const total = eventos.length
@@ -221,57 +225,133 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Card: Próxima Dose */}
-        {!loading && proximaDose && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <span className="bg-green-100 text-primary text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="9" stroke="#006B5E" strokeWidth="2" />
-                  <path d="M12 7v5l3 3" stroke="#006B5E" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-                No horário
-              </span>
-              <span className="text-gray-400 text-xs">Próxima dose</span>
+        {/* Carrossel: doses acionáveis */}
+        {!loading && dosesAcionaveis.length > 0 && (
+          <div className="flex flex-col gap-2">
+          <div
+            ref={carrosselRef}
+            className="flex gap-3 overflow-x-auto pb-1"
+            style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            onScroll={e => {
+              const el = e.currentTarget
+              const index = Math.round(el.scrollLeft / (el.scrollWidth / dosesAcionaveis.length))
+              setCardAtivo(index)
+            }}
+          >
+            {dosesAcionaveis.map((e) => {
+              const isMissed    = e.status === 'missed'
+              const isDispensed = e.status === 'dispensed'
+              const isPending   = e.status === 'pending'
+
+              return (
+                <div
+                  key={e.event_id}
+                  className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col gap-3 shrink-0"
+                  style={{ minWidth: '100%', scrollSnapAlign: 'start' }}
+                >
+                  {/* Badge de status */}
+                  <div className="flex items-center justify-between">
+                    {isMissed && (
+                      <span className="bg-red-100 text-danger text-xs font-semibold px-3 py-1 rounded-full">
+                        Atrasada
+                      </span>
+                    )}
+                    {isDispensed && (
+                      <span className="bg-orange-100 text-orange-600 text-xs font-semibold px-3 py-1 rounded-full">
+                        Acionado
+                      </span>
+                    )}
+                    {isPending && (
+                      <span className="bg-green-100 text-primary text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="9" stroke="#006B5E" strokeWidth="2" />
+                          <path d="M12 7v5l3 3" stroke="#006B5E" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                        No horário
+                      </span>
+                    )}
+                    <span className="text-gray-400 text-xs">{formatarHora(e.scheduled_time)}</span>
+                  </div>
+
+                  {/* Nome e dosagem */}
+                  <div>
+                    <h2 className="text-base font-bold text-gray-800 leading-tight">{e.medication_name}</h2>
+                    <p className="text-gray-500 text-xs mt-0.5">{e.medication_dosage} · 1 comprimido</p>
+                  </div>
+
+                  {/* Tempo restante (só para pendentes no futuro) */}
+                  {isPending && tempoAte(e.scheduled_time) && (
+                    <div className="flex items-center gap-1.5">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="9" stroke="#F59E0B" strokeWidth="2" />
+                        <path d="M12 7v5l3 3" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                      <span className="text-gray-500 text-xs">
+                        Em <strong>{tempoAte(e.scheduled_time)}</strong>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Botão de ação */}
+                  {isPending && (
+                    <button
+                      onClick={() => acionarDispenser(e.event_id)}
+                      disabled={acionando === e.event_id}
+                      className="w-full bg-primary hover:bg-primary/90 text-white font-semibold rounded-full py-2.5 text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2 mt-auto"
+                    >
+                      {acionando === e.event_id ? 'Acionando...' : (
+                        <>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                            <path d="M5 3l14 9-14 9V3z" fill="white" />
+                          </svg>
+                          Acionar Dispenser
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {isDispensed && (
+                    <div className="flex flex-col gap-2 mt-auto">
+                      <div className="w-full bg-orange-50 border border-orange-200 rounded-full py-2.5 text-xs text-orange-600 font-semibold text-center">
+                        Aguardando retirada...
+                      </div>
+                      <button
+                        onClick={() => acionarDispenser(e.event_id)}
+                        disabled={acionando === e.event_id}
+                        className="w-full border border-gray-200 text-gray-500 text-xs font-medium rounded-full py-2 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                      >
+                        {acionando === e.event_id ? 'Reenviando...' : 'Reenviar comando'}
+                      </button>
+                    </div>
+                  )}
+
+                  {isMissed && (
+                    <button
+                      onClick={() => acionarDispenser(e.event_id)}
+                      disabled={acionando === e.event_id}
+                      className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold rounded-full py-2.5 text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2 mt-auto"
+                    >
+                      {acionando === e.event_id ? 'Acionando...' : 'Tomar agora'}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Dots de paginação — só aparece com mais de 1 card */}
+          {dosesAcionaveis.length > 1 && (
+            <div className="flex items-center justify-center gap-1.5">
+              {dosesAcionaveis.map((_, i) => (
+                <div
+                  key={i}
+                  className={`rounded-full transition-all duration-200 ${
+                    i === cardAtivo ? 'w-4 h-2 bg-primary' : 'w-2 h-2 bg-gray-300'
+                  }`}
+                />
+              ))}
             </div>
-
-            <h2 className="text-xl font-bold text-gray-800">{proximaDose.medication_name}</h2>
-            <p className="text-gray-500 text-sm mb-3">{proximaDose.medication_dosage} · 1 comprimido</p>
-
-            {tempoAte(proximaDose.scheduled_time) && (
-              <div className="flex items-center gap-2 mb-4">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="9" stroke="#F59E0B" strokeWidth="2" />
-                  <path d="M12 7v5l3 3" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-                <span className="text-gray-600 text-sm">
-                  Próxima dose em <strong>{tempoAte(proximaDose.scheduled_time)}</strong>
-                </span>
-              </div>
-            )}
-
-            {proximaDose.status === 'pending' && (
-              <button
-                onClick={() => acionarDispenser(proximaDose.event_id)}
-                disabled={acionando === proximaDose.event_id}
-                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold rounded-full py-3 text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {acionando === proximaDose.event_id ? 'Acionando...' : (
-                  <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M5 3l14 9-14 9V3z" fill="white" />
-                    </svg>
-                    Acionar Dispenser
-                  </>
-                )}
-              </button>
-            )}
-
-            {proximaDose.status === 'dispensed' && (
-              <div className="w-full bg-orange-50 border border-orange-200 rounded-full py-3 text-sm text-orange-600 font-semibold text-center">
-                Aguardando retirada no dispenser...
-              </div>
-            )}
+          )}
           </div>
         )}
 
@@ -303,17 +383,9 @@ export default function Dashboard() {
                     <p className="text-sm font-semibold text-gray-800">{e.medication_name}</p>
                     <p className="text-xs text-gray-400">{e.medication_dosage}</p>
                   </div>
-                  {e.status === 'confirmed'  && <CheckIcon />}
-                  {e.status === 'missed' && (
-                    <button
-                      onClick={() => acionarDispenser(e.event_id)}
-                      disabled={acionando === e.event_id}
-                      className="text-xs font-semibold text-danger border border-red-200 rounded-full px-2.5 py-1.5 hover:bg-red-50 transition-colors disabled:opacity-50 shrink-0"
-                    >
-                      {acionando === e.event_id ? '...' : 'Tomar agora'}
-                    </button>
-                  )}
-                  {(e.status === 'pending' || e.status === 'dispensed') && <ClockIcon />}
+                  {e.status === 'confirmed'                               && <CheckIcon />}
+                  {e.status === 'missed'                                  && <MissedIcon />}
+                  {(e.status === 'pending' || e.status === 'dispensed')   && <ClockIcon />}
                 </div>
               ))}
             </div>

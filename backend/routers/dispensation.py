@@ -388,7 +388,7 @@ def trigger_dispense(event_id: str, db: Session = Depends(get_db)):
     if not evento:
         raise HTTPException(status_code=404, detail="Evento não encontrado")
 
-    if evento.status not in ("pending", "missed"):
+    if evento.status not in ("pending", "missed", "dispensed"):
         raise HTTPException(
             status_code=400,
             detail=f"Evento já está com status '{evento.status}' — não pode ser acionado novamente"
